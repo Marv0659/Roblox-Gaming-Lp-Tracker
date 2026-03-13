@@ -1,19 +1,12 @@
-import { auth } from "@/auth";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default auth((req) => {
-  const isSignedIn = !!req.auth;
-  const isAuthPage =
-    req.nextUrl.pathname.startsWith("/auth/signin") ||
-    req.nextUrl.pathname.startsWith("/auth/error");
-  if (isAuthPage && isSignedIn) {
-    return Response.redirect(new URL("/dashboard", req.url));
-  }
-  if (!isAuthPage && !isSignedIn) {
-    return Response.redirect(new URL("/auth/signin", req.url));
-  }
-  return undefined;
-});
+// Auth is enforced in server layouts to keep this Edge bundle under 1 MB.
+// See (dashboard)/layout.tsx and auth/layout.tsx.
+export function middleware(_req: NextRequest) {
+  return NextResponse.next();
+}
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api).*)"],
 };
