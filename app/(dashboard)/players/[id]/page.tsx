@@ -1,0 +1,331 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getPlayerDetail } from "@/lib/leaderboard";
+import { getPlayerBadges, getRoughPatchSummary } from "@/lib/player-badges";
+import { SyncButton } from "./sync-button";
+import { LpHistoryChart } from "@/components/lp-history-chart";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
+
+function tierColor(tier: string): string {
+  const colors: Record<string, string> = {
+    IRON: "text-zinc-400",
+    BRONZE: "text-amber-700",
+    SILVER: "text-zinc-300",
+    GOLD: "text-yellow-500",
+    PLATINUM: "text-sky-400",
+    EMERALD: "text-emerald-500",
+    DIAMOND: "text-cyan-400",
+    MASTER: "text-purple-400",
+    GRANDMASTER: "text-red-400",
+    CHALLENGER: "text-amber-400",
+  };
+  return colors[tier] ?? "text-muted-foreground";
+}
+
+export default async function PlayerDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const player = await getPlayerDetail(id);
+  if (!player) notFound();
+
+  const rank = player.currentRank;
+  const badges = getPlayerBadges(player.funStats);
+  const roughPatch = getRoughPatchSummary(player.funStats);
+
+  const last10 = player.recentMatches.slice(0, 10);
+  const last20 = player.recentMatches.slice(0, 20);
+  const last10Wins = last10.filter((m) => m.win).length;
+  const last20Wins = last20.filter((m) => m.win).length;
+
+  return (
+    <div className="p-6 md:p-8">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <Button variant="ghost" size="sm" className="mb-2 -ml-2 text-muted-foreground" asChild>
+            <Link href="/players">← Players</Link>
+          </Button>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {player.gameName}
+            <span className="font-normal text-muted-foreground">#{player.tagLine}</span>
+          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="font-normal uppercase">
+              {player.region}
+            </Badge>
+            {badges.length > 0 &&
+              badges.map((b) => (
+                <Badge key={b} variant="outline" className="font-normal">
+                  {b}
+                </Badge>
+              ))}
+          </div>
+        </div>
+        <SyncButton playerId={player.id} />
+      </div>
+
+      <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold">Current rank</h2>
+          </CardHeader>
+          <CardContent>
+            {rank ? (
+              <div className="flex flex-wrap gap-6">
+                <div>
+                  <span className={cn("text-xl font-bold", tierColor(rank.tier))}>
+                    {rank.tier} {rank.rank}
+                  </span>
+                  <span className="ml-2 text-muted-foreground">{rank.leaguePoints} LP</span>
+                </div>
+                <div className="text-muted-foreground">
+                  {rank.wins}W / {rank.losses}L
+                  {rank.winrate != null && (
+                    <span className="ml-2">({rank.winrate.toFixed(1)}% WR)</span>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Snapshot: {new Date(rank.snapshotAt).toLocaleString()}
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground">
+                No rank data. Click &quot;Sync now&quot; to fetch from Riot.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold">Recent performance</h2>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
+              <div>
+                <dt className="text-xs uppercase tracking-wide">LP last 7 days</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {player.funStats.lpGained7d >= 0 ? "+" : ""}
+                  {player.funStats.lpGained7d} LP
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide">LP last 30 days</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {player.funStats.lpGained30d >= 0 ? "+" : ""}
+                  {player.funStats.lpGained30d} LP
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide">Last 10 games</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {last10.length >= 10
+                    ? `${last10Wins}W–${10 - last10Wins}L (${player.funStats.winrateLast10?.toFixed(1) ?? "—"}%)`
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide">Last 20 games</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {last20.length >= 20
+                    ? `${last20Wins}W–${20 - last20Wins}L (${player.funStats.winrateLast20?.toFixed(1) ?? "—"}%)`
+                    : last20.length > 0
+                      ? `${last20Wins}W–${last20.length - last20Wins}L (${player.funStats.winrateLast20?.toFixed(1) ?? "—"}%)`
+                      : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide">Win streak</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {player.funStats.currentWinStreak > 0
+                    ? `W${player.funStats.currentWinStreak}`
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide">Loss streak</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {player.funStats.currentLossStreak > 0
+                    ? `L${player.funStats.currentLossStreak}`
+                    : "—"}
+                </dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold">Champions & KDA</h2>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
+              <div>
+                <dt className="text-xs uppercase tracking-wide">Most played</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {player.funStats.mostPlayedChampion ?? "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide">Best by WR</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {player.funStats.bestChampionByWinrate
+                    ? `${player.funStats.bestChampionByWinrate.championName} (${player.funStats.bestChampionByWinrate.winrate.toFixed(1)}% · ${player.funStats.bestChampionByWinrate.games}g)`
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide">Worst by WR</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {player.funStats.worstChampionByWinrate
+                    ? `${player.funStats.worstChampionByWinrate.championName} (${player.funStats.worstChampionByWinrate.winrate.toFixed(1)}% · ${player.funStats.worstChampionByWinrate.games}g)`
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide">Avg KDA (recent)</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {player.funStats.averageKda != null
+                    ? player.funStats.averageKda.toFixed(2)
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide">Games last 7 days</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {player.funStats.totalGamesLast7d}
+                </dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+
+        {roughPatch && (
+          <Card
+            className={cn(
+              "border-amber-500/30",
+              roughPatch.severity === "high" && "border-destructive/40 bg-destructive/5",
+              roughPatch.severity === "medium" && "bg-amber-500/5"
+            )}
+          >
+            <CardHeader>
+              <h2 className="text-lg font-semibold text-amber-600 dark:text-amber-500">
+                Rough patch
+              </h2>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">{roughPatch.summary}</p>
+              <Badge variant="secondary" className="mt-2 font-normal">
+                Data-driven, not salt
+              </Badge>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <h2 className="text-lg font-semibold">Recent matches</h2>
+        </CardHeader>
+        <CardContent>
+          {player.recentMatches.length === 0 ? (
+            <p className="text-muted-foreground">
+              No matches stored. Sync to fetch recent ranked games.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="pb-2 pr-4">Champion</th>
+                    <th className="pb-2 pr-4">K/D/A</th>
+                    <th className="pb-2 pr-4">Result</th>
+                    <th className="pb-2 pr-4">CS</th>
+                    <th className="pb-2 pr-4">Gold</th>
+                    <th className="pb-2 pr-4">Damage</th>
+                    <th className="pb-2">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {player.recentMatches.map((m) => (
+                    <tr
+                      key={m.id}
+                      className="border-b border-border text-muted-foreground last:border-b-0"
+                    >
+                      <td className="py-2 pr-4 font-medium text-foreground">
+                        {m.championName ?? "—"}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {m.kills}/{m.deaths}/{m.assists}
+                      </td>
+                      <td className="py-2 pr-4">
+                        <span
+                          className={
+                            m.win ? "text-emerald-500" : "text-destructive"
+                          }
+                        >
+                          {m.win ? "Win" : "Loss"}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-4">{m.cs}</td>
+                      <td className="py-2 pr-4">{m.gold.toLocaleString()}</td>
+                      <td className="py-2 pr-4">
+                        {m.damageDealt.toLocaleString()}
+                      </td>
+                      <td className="py-2 text-muted-foreground">
+                        <Link
+                          href={`/matches/${m.matchDbId}`}
+                          className="text-primary hover:underline"
+                        >
+                          {new Date(m.gameStartAt).toLocaleDateString()}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {player.recentSnapshots.length > 0 && (
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold">LP history</h2>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <LpHistoryChart
+              snapshots={player.recentSnapshots.filter(
+                (s) => s.queueType === "RANKED_SOLO_5x5"
+              )}
+            />
+            {player.recentSnapshots.filter((s) => s.queueType === "RANKED_SOLO_5x5")
+              .length > 0 && (
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                {player.recentSnapshots
+                  .filter((s) => s.queueType === "RANKED_SOLO_5x5")
+                  .slice(0, 10)
+                  .map((s, i) => (
+                    <li key={i}>
+                      {s.tier} {s.rank} {s.leaguePoints} LP —{" "}
+                      {new Date(s.createdAt).toLocaleString()}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
