@@ -1,13 +1,6 @@
-/**
- * Vercel Cron: runs sync-all on a schedule.
- *
- * Required env:
- *   CRON_SECRET - Set in Vercel (Settings → Environment Variables) and in .env.local for local testing.
- *   Pass as header: Authorization: Bearer <CRON_SECRET>. Do not expose to the client.
- *
- * To change the schedule: edit vercel.json "crons"[].schedule (cron expression, UTC).
- * Example: "0 6 * * *" = daily at 06:00 UTC. For every 6 hours, use 0 in min and 6 in hour.
- */
+// Vercel Cron: runs sync-all on a schedule.
+// Required env: CRON_SECRET (set in Vercel and .env.local). Send as Authorization: Bearer <CRON_SECRET>.
+// Schedule: edit vercel.json crons[].schedule (cron expression in UTC).
 
 import { NextResponse } from "next/server";
 import { syncAllPlayers } from "@/app/actions/players";
