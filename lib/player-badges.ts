@@ -110,7 +110,7 @@ export function getRoughPatchSummary(
     stats.worstChampionByWinrate.winrate <= STUBBORN_CHAMP_MAX_WR
   ) {
     reasons.push(
-      `${stats.worstChampionByWinrate.championName} ${stats.worstChampionByWinrate.winrate.toFixed(0)}% (${stats.worstChampionByWinrate.games}g)`
+      `${stats.worstChampionByWinrate.championName} ${stats.worstChampionByWinrate.winrate.toFixed(0)}% (${stats.worstChampionByWinrate.games} games)`
     );
   }
 
