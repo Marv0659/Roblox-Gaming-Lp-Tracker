@@ -185,6 +185,85 @@ export async function persistRankEventsForNewSnapshot(
   }
 }
 
+// ---- Backfill (e.g. production has snapshots but no events) ----
+
+/** One-time backfill per process to avoid repeated work. */
+let backfillAttempted = false;
+
+/**
+ * Creates RankEvent rows from existing RankSnapshots. Safe to run multiple times (skips snapshots that already have events).
+ * Use when production has snapshot data but no events (e.g. DB copy, or sync ran before event logic existed).
+ */
+export async function backfillRankEventsFromSnapshots(): Promise<{ created: number }> {
+  const pairs = await prisma.rankSnapshot.groupBy({
+    by: ["trackedPlayerId", "queueType"],
+  });
+  let created = 0;
+  for (const { trackedPlayerId, queueType } of pairs) {
+    const snapshots = await prisma.rankSnapshot.findMany({
+      where: { trackedPlayerId, queueType },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        createdAt: true,
+        tier: true,
+        rank: true,
+        leaguePoints: true,
+      },
+    });
+    let maxRankScoreSoFar = -1;
+    for (let i = 0; i < snapshots.length; i++) {
+      const snapshot = snapshots[i];
+      const existing = await prisma.rankEvent.count({
+        where: { rankSnapshotId: snapshot.id },
+      });
+      if (existing > 0) {
+        const score = rankToScore({
+          tier: snapshot.tier,
+          rank: snapshot.rank,
+          leaguePoints: snapshot.leaguePoints,
+        });
+        if (score > maxRankScoreSoFar) maxRankScoreSoFar = score;
+        continue;
+      }
+      const previous = i === 0 ? null : (snapshots[i - 1] as SnapshotLike);
+      const newSnapshot = {
+        ...snapshot,
+        createdAt: snapshot.createdAt,
+      };
+      const toCreate = getRankEventsToCreate(
+        previous,
+        newSnapshot,
+        maxRankScoreSoFar
+      );
+      for (const e of toCreate) {
+        await prisma.rankEvent.create({
+          data: {
+            trackedPlayerId,
+            eventType: e.eventType,
+            queueType,
+            tierBefore: e.tierBefore,
+            rankBefore: e.rankBefore,
+            leaguePointsBefore: e.leaguePointsBefore,
+            tierAfter: e.tierAfter,
+            rankAfter: e.rankAfter,
+            leaguePointsAfter: e.leaguePointsAfter,
+            rankSnapshotId: snapshot.id,
+          },
+        });
+        created++;
+      }
+      const score = rankToScore({
+        tier: snapshot.tier,
+        rank: snapshot.rank,
+        leaguePoints: snapshot.leaguePoints,
+      });
+      if (score > maxRankScoreSoFar) maxRankScoreSoFar = score;
+    }
+  }
+  return { created };
+}
+
 // ---- Queries for UI ----
 
 export interface RankEventDisplay {
@@ -205,7 +284,8 @@ export interface RankEventDisplay {
 
 /** Recent rank events across all tracked players (for dashboard). */
 export async function getRecentRankEvents(
-  limit: number = 20
+  limit: number = 20,
+  skipBackfill?: boolean
 ): Promise<RankEventDisplay[]> {
   const rows = await prisma.rankEvent.findMany({
     orderBy: { createdAt: "desc" },
@@ -216,6 +296,17 @@ export async function getRecentRankEvents(
       },
     },
   });
+
+  // If no events but we have snapshots, backfill once per process (e.g. production after deploy).
+  if (rows.length === 0 && !skipBackfill && !backfillAttempted) {
+    const snapshotCount = await prisma.rankSnapshot.count();
+    if (snapshotCount > 0) {
+      backfillAttempted = true;
+      await backfillRankEventsFromSnapshots();
+      return getRecentRankEvents(limit, true);
+    }
+  }
+
   return rows.map((r) => ({
     id: r.id,
     createdAt: r.createdAt,

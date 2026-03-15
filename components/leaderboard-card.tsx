@@ -8,14 +8,13 @@ import { cn } from "@/lib/utils";
 interface Props {
   entry: LeaderboardEntry;
   index: number;
-  inGame?: boolean;
 }
 
 /**
  * Mobile-first leaderboard card: no horizontal scroll, all key info at a glance,
  * single clear CTA. Used only on small viewports; table is shown on md+.
  */
-export function LeaderboardCard({ entry, index, inGame }: Props) {
+export function LeaderboardCard({ entry, index }: Props) {
   return (
     <Link href={`/players/${entry.id}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg">
       <Card className="transition-colors hover:bg-muted/30 active:bg-muted/50">
@@ -26,9 +25,6 @@ export function LeaderboardCard({ entry, index, inGame }: Props) {
                 <span className="text-xs font-medium tabular-nums text-muted-foreground shrink-0">
                   #{index + 1}
                 </span>
-                {inGame && (
-                  <span className="size-2 shrink-0 rounded-full bg-emerald-500" title="In game" aria-hidden />
-                )}
                 <span className="truncate text-sm font-semibold text-foreground">
                   {entry.gameName}
                   <span className="font-normal text-muted-foreground">#{entry.tagLine}</span>

@@ -123,6 +123,48 @@ export async function getLeaderboardRegions(): Promise<string[]> {
   return rows.map((r) => r.region);
 }
 
+/** One item in the recent-games feed (dashboard). */
+export interface RecentMatchFeedItem {
+  trackedPlayerId: string;
+  gameName: string;
+  tagLine: string;
+  win: boolean;
+  championName: string | null;
+  kills: number;
+  deaths: number;
+  assists: number;
+  gameStartAt: Date;
+  gameDuration: number;
+  matchDbId: string;
+}
+
+/** Recent wins/losses across all tracked players for dashboard live feed. */
+export async function getRecentMatchFeed(
+  limit: number = 20
+): Promise<RecentMatchFeedItem[]> {
+  const participants = await prisma.matchParticipant.findMany({
+    take: limit,
+    orderBy: { match: { gameStartAt: "desc" } },
+    include: {
+      match: { select: { id: true, gameStartAt: true, gameDuration: true } },
+      trackedPlayer: { select: { id: true, gameName: true, tagLine: true } },
+    },
+  });
+  return participants.map((p) => ({
+    trackedPlayerId: p.trackedPlayer.id,
+    gameName: p.trackedPlayer.gameName,
+    tagLine: p.trackedPlayer.tagLine,
+    win: p.win,
+    championName: p.championName,
+    kills: p.kills,
+    deaths: p.deaths,
+    assists: p.assists,
+    gameStartAt: p.match.gameStartAt,
+    gameDuration: p.match.gameDuration,
+    matchDbId: p.match.id,
+  }));
+}
+
 export interface MatchDetailParticipant {
   id: string;
   gameName: string;

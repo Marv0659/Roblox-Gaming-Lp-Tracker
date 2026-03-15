@@ -93,20 +93,3 @@ export interface AddPlayerInput {
   tagLine: string;
   region: string; // platform id: na1, euw1, etc.
 }
-
-// spectator-v5: Active game (current game) by summoner. 404 when not in game.
-export interface ActiveGameParticipantDto {
-  summonerId: string;
-  championId: number;
-  teamId: number;
-  spell1Id?: number;
-  spell2Id?: number;
-}
-
-export interface ActiveGameDto {
-  gameId: number;
-  gameStartTime: number; // Unix ms
-  gameLength: number; // seconds (elapsed while in lobby/game)
-  gameQueueConfigId: number; // 420 = Ranked Solo/Duo, 440 = Flex, 400 = Normal Draft, 450 = ARAM, etc.
-  participants: ActiveGameParticipantDto[];
-}

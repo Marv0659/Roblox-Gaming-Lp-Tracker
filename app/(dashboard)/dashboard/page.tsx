@@ -1,8 +1,6 @@
-import { getLeaderboard, getLeaderboardRegions } from "@/lib/leaderboard";
-import { getRecentRankEvents } from "@/lib/rank-events";
-import { getTrackedPlayersLiveStatuses } from "@/lib/live-status";
+import { getLeaderboard, getLeaderboardRegions, getRecentMatchFeed } from "@/lib/leaderboard";
 import { LeaderboardTable } from "@/components/leaderboard-table";
-import { RecentRankEvents } from "@/components/recent-rank-events";
+import { RecentMatchFeed } from "@/components/recent-match-feed";
 import { LeaderboardFilters } from "./leaderboard-filters";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -18,15 +16,11 @@ export default async function DashboardPage({
     region: params.region || undefined,
     queue: params.queue || undefined,
   };
-  const [entries, regions, recentEvents, liveStatuses] = await Promise.all([
+  const [entries, regions, recentMatches] = await Promise.all([
     getLeaderboard(filters),
     getLeaderboardRegions(),
-    getRecentRankEvents(20),
-    getTrackedPlayersLiveStatuses(),
+    getRecentMatchFeed(20),
   ]);
-  const inGamePlayerIds = new Set(
-    [...liveStatuses.entries()].filter(([, s]) => s.isInGame).map(([id]) => id)
-  );
 
   return (
     <div className="relative p-4 sm:p-6 md:p-8">
@@ -43,11 +37,11 @@ export default async function DashboardPage({
       </div>
 
       <div className="mb-8">
-        <RecentRankEvents
-          events={recentEvents}
-          showPlayerName
-          title="Recent Ranked Events"
-          emptyMessage="No rank events yet. Sync players to detect placements, promos, and demotions."
+        <RecentMatchFeed
+          items={recentMatches}
+          title="Recent games"
+          emptyMessage="No games yet. Sync players to fetch recent ranked matches."
+          maxItems={6}
         />
       </div>
 
@@ -62,7 +56,7 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
       ) : (
-        <LeaderboardTable entries={entries} inGamePlayerIds={inGamePlayerIds} />
+        <LeaderboardTable entries={entries} />
       )}
     </div>
   );

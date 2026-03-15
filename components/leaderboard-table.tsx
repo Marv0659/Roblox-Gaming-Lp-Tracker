@@ -6,11 +6,9 @@ import { Badge } from "@/components/ui/badge";
 
 interface Props {
   entries: LeaderboardEntry[];
-  /** Player IDs currently in an active game (show green dot on leaderboard). */
-  inGamePlayerIds?: Set<string>;
 }
 
-export function LeaderboardTable({ entries, inGamePlayerIds = new Set() }: Props) {
+export function LeaderboardTable({ entries }: Props) {
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-col gap-2 border-b border-border bg-muted/30 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
@@ -29,7 +27,7 @@ export function LeaderboardTable({ entries, inGamePlayerIds = new Set() }: Props
       {/* Mobile: card list — no horizontal scroll, all info at a glance */}
       <div className="space-y-2 p-3 md:hidden">
         {entries.map((entry, index) => (
-          <LeaderboardCard key={entry.id} entry={entry} index={index} inGame={inGamePlayerIds.has(entry.id)} />
+          <LeaderboardCard key={entry.id} entry={entry} index={index} />
         ))}
       </div>
 
@@ -50,7 +48,7 @@ export function LeaderboardTable({ entries, inGamePlayerIds = new Set() }: Props
           </thead>
           <tbody>
             {entries.map((entry, index) => (
-              <LeaderboardRow key={entry.id} entry={entry} index={index} inGame={inGamePlayerIds.has(entry.id)} />
+              <LeaderboardRow key={entry.id} entry={entry} index={index} />
             ))}
           </tbody>
         </table>
