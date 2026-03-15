@@ -87,6 +87,22 @@ export interface TeamDto {
   win: boolean;
 }
 
+// challenges-v1: Player challenge data
+export interface ChallengeEntry {
+  challengeId: number;
+  percentile: number;
+  level: string; // NONE, IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER
+  value: number;
+  achievedTime?: number;
+}
+
+export interface PlayerChallengeDataDto {
+  totalPoints: { level: string; current: number; max: number; percentile: number };
+  categoryPoints: Record<string, { level: string; current: number; max: number; percentile: number }>;
+  challenges: ChallengeEntry[];
+  preferences: { bannerAccent?: string; title?: string; challengeIds?: number[] };
+}
+
 // Input for adding a player (gameName, tagLine, region)
 export interface AddPlayerInput {
   gameName: string;
