@@ -6,6 +6,7 @@ import { getPlayerBadges, getRoughPatchSummary, BADGE_TOOLTIPS } from "@/lib/pla
 import { getBeastestHolder } from "@/lib/beastest";
 import type { ChampionTrustLabel } from "@/lib/champion-trust";
 import { SyncButton } from "./sync-button";
+import { ViewSwitcher } from "./view-switcher";
 import { LpHistoryChart } from "@/components/lp-history-chart";
 import { RecentRankEvents } from "@/components/recent-rank-events";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -89,7 +90,10 @@ export default async function PlayerDetailPage({
               ))}
           </div>
         </div>
-        <SyncButton playerId={player.id} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <ViewSwitcher playerId={player.id} />
+          <SyncButton playerId={player.id} />
+        </div>
       </div>
 
       <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
