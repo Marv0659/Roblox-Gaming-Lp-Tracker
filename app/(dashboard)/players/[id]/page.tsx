@@ -179,7 +179,7 @@ export default async function PlayerDetailPage({
                 <dt className="text-xs uppercase tracking-wide">Best by WR</dt>
                 <dd className="text-base font-medium text-foreground">
                   {player.funStats.bestChampionByWinrate
-                    ? `${player.funStats.bestChampionByWinrate.championName} (${player.funStats.bestChampionByWinrate.winrate.toFixed(1)}% · ${player.funStats.bestChampionByWinrate.games}g)`
+                    ? `${player.funStats.bestChampionByWinrate.championName} (${player.funStats.bestChampionByWinrate.winrate.toFixed(1)}% · ${player.funStats.bestChampionByWinrate.games} games)`
                     : "—"}
                 </dd>
               </div>
@@ -187,7 +187,7 @@ export default async function PlayerDetailPage({
                 <dt className="text-xs uppercase tracking-wide">Worst by WR</dt>
                 <dd className="text-base font-medium text-foreground">
                   {player.funStats.worstChampionByWinrate
-                    ? `${player.funStats.worstChampionByWinrate.championName} (${player.funStats.worstChampionByWinrate.winrate.toFixed(1)}% · ${player.funStats.worstChampionByWinrate.games}g)`
+                    ? `${player.funStats.worstChampionByWinrate.championName} (${player.funStats.worstChampionByWinrate.winrate.toFixed(1)}% · ${player.funStats.worstChampionByWinrate.games} games)`
                     : "—"}
                 </dd>
               </div>
