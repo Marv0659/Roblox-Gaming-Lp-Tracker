@@ -14,6 +14,7 @@ function ChampionTrustBadge({ label }: { label: ChampionTrustLabel }) {
     COINFLIP: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30",
     DO_NOT_ALLOW: "bg-destructive/20 text-destructive border-destructive/30",
     FAKE_COMFORT_PICK: "bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30",
+    POCKET_PICK: "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30",
     INSUFFICIENT_DATA: "bg-muted text-muted-foreground border-border",
   };
   return (

@@ -24,6 +24,7 @@ export type ChampionTrustLabel =
   | "COINFLIP"
   | "DO_NOT_ALLOW"
   | "FAKE_COMFORT_PICK"
+  | "POCKET_PICK"   // small sample, high WR — "pocket pick energy?"
   | "INSUFFICIENT_DATA";
 
 export type SampleQuality = "high" | "medium" | "low";
@@ -144,7 +145,7 @@ export function computeChampionTrust(
         ? (s.winsRecent / s.gamesRecent) * 100
         : null;
 
-    let trustLabel: ChampionTrustLabel = "COINFLIP";
+    let trustLabel: ChampionTrustLabel;
     let trustReason: string;
 
     // FAKE_COMFORT_PICK: among most played but results are poor
@@ -173,7 +174,7 @@ export function computeChampionTrust(
       trustLabel = "TRUSTED";
       trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR, stable`;
     }
-    // COINFLIP: meaningful sample but mixed/unreliable
+    // COINFLIP: winrate in the mixed/unreliable band (42–56%) — actually inconsistent
     else if (
       s.games >= MIN_GAMES_TO_SHOW &&
       winrate > WINRATE_COINFLIP_LOW &&
@@ -182,12 +183,24 @@ export function computeChampionTrust(
       trustLabel = "COINFLIP";
       trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR — mixed results`;
     }
+    // Enough games but not trusted (e.g. 5+ games, 50% WR): inconsistent
     else if (s.games >= MIN_GAMES_MEANINGFUL && winrate < WINRATE_TRUSTED) {
       trustLabel = "COINFLIP";
       trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR — inconsistent`;
     }
+    // Small sample, high WR: pocket pick energy — fun label instead of "insufficient data"
+    else if (
+      s.games >= MIN_GAMES_TO_SHOW &&
+      s.games < MIN_GAMES_MEANINGFUL &&
+      winrate >= 60
+    ) {
+      trustLabel = "POCKET_PICK";
+      trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR — pocket pick energy?`;
+    }
+    // Other small sample or edge cases: too early to call
     else {
-      trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR`;
+      trustLabel = "INSUFFICIENT_DATA";
+      trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR — too early to call`;
     }
 
     results.push({
