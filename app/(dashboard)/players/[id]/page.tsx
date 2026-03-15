@@ -175,6 +175,14 @@ export default async function PlayerDetailPage({
                 </dd>
               </div>
               <div>
+                <dt className="text-xs uppercase tracking-wide">Avg KDA (recent)</dt>
+                <dd className="text-base font-medium text-foreground">
+                  {player.funStats.averageKda != null
+                    ? player.funStats.averageKda.toFixed(2)
+                    : "—"}
+                </dd>
+              </div>
+              <div>
                 <dt className="text-xs uppercase tracking-wide">Best by WR</dt>
                 <dd className="text-base font-medium text-foreground">
                   {player.funStats.bestChampionByWinrate
@@ -187,14 +195,6 @@ export default async function PlayerDetailPage({
                 <dd className="text-base font-medium text-foreground">
                   {player.funStats.worstChampionByWinrate
                     ? `${player.funStats.worstChampionByWinrate.championName} (${player.funStats.worstChampionByWinrate.winrate.toFixed(1)}% · ${player.funStats.worstChampionByWinrate.games} games)`
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide">Avg KDA (recent)</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {player.funStats.averageKda != null
-                    ? player.funStats.averageKda.toFixed(2)
                     : "—"}
                 </dd>
               </div>
