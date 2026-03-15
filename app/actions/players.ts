@@ -1,10 +1,27 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { onboardTrackedPlayer, syncPlayer } from "@/lib/riot";
 import { isValidPlatform } from "@/lib/riot/regions";
 import type { AddPlayerInput } from "@/types/riot";
+
+const ADMIN_EMAILS = process.env.ADMIN_EMAIL
+  ? process.env.ADMIN_EMAIL.split(",").map((e) => e.trim().toLowerCase())
+  : [];
+
+function canAddPlayers(email: string | null | undefined): boolean {
+  if (!email) return false;
+  if (ADMIN_EMAILS.length === 0) return false;
+  return ADMIN_EMAILS.includes(email.toLowerCase());
+}
+
+/** Call from server components to know if current user can add players. */
+export async function getCanAddPlayers(): Promise<boolean> {
+  const session = await auth();
+  return canAddPlayers(session?.user?.email);
+}
 
 export type AddPlayerResult =
   | { ok: true; playerId: string; message: string }
@@ -15,6 +32,11 @@ export async function addTrackedPlayer(
   tagLine: string,
   region: string
 ): Promise<AddPlayerResult> {
+  const session = await auth();
+  if (!canAddPlayers(session?.user?.email)) {
+    return { ok: false, error: "Only the admin can add players." };
+  }
+
   const trimmedGameName = gameName.trim();
   const trimmedTagLine = tagLine.trim();
   const trimmedRegion = region.trim().toLowerCase();
