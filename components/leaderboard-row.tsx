@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils";
 interface Props {
   entry: LeaderboardEntry;
   index: number;
+  inGame?: boolean;
 }
 
-export function LeaderboardRow({ entry, index }: Props) {
+export function LeaderboardRow({ entry, index, inGame }: Props) {
   return (
     <tr className="border-b border-border transition-colors last:border-b-0 hover:bg-muted/30">
       <td className="px-2 py-2 text-xs font-medium text-muted-foreground sm:px-4 sm:py-3">
@@ -17,7 +18,10 @@ export function LeaderboardRow({ entry, index }: Props) {
       </td>
       <td className="px-2 py-2 sm:px-4 sm:py-3">
         <div className="flex flex-col min-w-0">
-          <span className="text-sm font-semibold truncate max-w-[120px] sm:max-w-none">
+          <span className="flex items-center gap-1.5 text-sm font-semibold truncate max-w-[120px] sm:max-w-none">
+            {inGame && (
+              <span className="size-2 shrink-0 rounded-full bg-emerald-500" title="In game" aria-hidden />
+            )}
             {entry.gameName}
             <span className="font-normal text-muted-foreground">#{entry.tagLine}</span>
           </span>

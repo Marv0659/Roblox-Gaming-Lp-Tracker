@@ -250,4 +250,5 @@ export {
   getMatchIdsByPuuid,
   getMatchById,
 };
+export { getActiveGameBySummonerId } from "./spectator";
 export { getRoutingRegion, isValidPlatform, PLATFORM_TO_ROUTING } from "./regions";

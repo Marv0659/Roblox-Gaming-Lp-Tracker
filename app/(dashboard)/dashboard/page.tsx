@@ -1,5 +1,6 @@
 import { getLeaderboard, getLeaderboardRegions } from "@/lib/leaderboard";
 import { getRecentRankEvents } from "@/lib/rank-events";
+import { getTrackedPlayersLiveStatuses } from "@/lib/live-status";
 import { LeaderboardTable } from "@/components/leaderboard-table";
 import { RecentRankEvents } from "@/components/recent-rank-events";
 import { LeaderboardFilters } from "./leaderboard-filters";
@@ -17,11 +18,15 @@ export default async function DashboardPage({
     region: params.region || undefined,
     queue: params.queue || undefined,
   };
-  const [entries, regions, recentEvents] = await Promise.all([
+  const [entries, regions, recentEvents, liveStatuses] = await Promise.all([
     getLeaderboard(filters),
     getLeaderboardRegions(),
     getRecentRankEvents(20),
+    getTrackedPlayersLiveStatuses(),
   ]);
+  const inGamePlayerIds = new Set(
+    [...liveStatuses.entries()].filter(([, s]) => s.isInGame).map(([id]) => id)
+  );
 
   return (
     <div className="relative p-4 sm:p-6 md:p-8">
@@ -57,7 +62,7 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
       ) : (
-        <LeaderboardTable entries={entries} />
+        <LeaderboardTable entries={entries} inGamePlayerIds={inGamePlayerIds} />
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPlayerDetail, estimatedLpForMatch } from "@/lib/leaderboard";
 import { getRecentRankEventsForPlayer } from "@/lib/rank-events";
 import { getPlayerBadges, getRoughPatchSummary, BADGE_TOOLTIPS } from "@/lib/player-badges";
+import { getPlayerLiveStatus, type LiveStatus } from "@/lib/live-status";
 import { SyncButton } from "./sync-button";
 import { LpHistoryChart } from "@/components/lp-history-chart";
 import { RecentRankEvents } from "@/components/recent-rank-events";
@@ -12,6 +13,36 @@ import { Badge } from "@/components/ui/badge";
 import { tierColor } from "@/lib/tier-colors";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 
+function formatElapsed(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function LiveStatusBadge({ status }: { status: LiveStatus }) {
+  const title = status.error
+    ? status.error
+    : status.isInGame && status.queueLabel
+      ? `${status.queueLabel}${status.elapsedSeconds != null ? ` · ${formatElapsed(status.elapsedSeconds)}` : ""}`
+      : "Current live game status (cached briefly to limit API calls)";
+  return (
+    <Badge
+      variant={status.isInGame ? "default" : "outline"}
+      className={cn(
+        "font-normal",
+        status.isInGame && status.isRankedSoloDuo && "bg-amber-600 hover:bg-amber-700",
+        status.isInGame && !status.isRankedSoloDuo && "bg-emerald-600 hover:bg-emerald-700"
+      )}
+      title={title}
+    >
+      {status.statusLabel}
+      {status.isInGame && status.elapsedSeconds != null && (
+        <span className="ml-1 opacity-90">({formatElapsed(status.elapsedSeconds)})</span>
+      )}
+    </Badge>
+  );
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function PlayerDetailPage({
@@ -20,9 +51,10 @@ export default async function PlayerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [player, milestones] = await Promise.all([
+  const [player, milestones, liveStatus] = await Promise.all([
     getPlayerDetail(id),
     getRecentRankEventsForPlayer(id, 15),
+    getPlayerLiveStatus(id),
   ]);
   if (!player) notFound();
 
@@ -50,6 +82,7 @@ export default async function PlayerDetailPage({
             <Badge variant="secondary" className="font-normal uppercase" title="Server/region where this account plays (e.g. EUW, NA).">
               {player.region}
             </Badge>
+            <LiveStatusBadge status={liveStatus} />
             {badges.length > 0 &&
               badges.map((b) => (
                 <Badge key={b} variant="outline" className="font-normal" title={BADGE_TOOLTIPS[b] ?? ""}>
@@ -60,6 +93,26 @@ export default async function PlayerDetailPage({
         </div>
         <SyncButton playerId={player.id} />
       </div>
+
+      {(liveStatus.isInGame || liveStatus.error) && (
+        <Card className="mb-4 border-border bg-card">
+          <CardHeader className="py-3">
+            <h2 className="text-sm font-semibold text-muted-foreground">Live status</h2>
+          </CardHeader>
+          <CardContent className="py-0 pb-3 text-sm">
+            {liveStatus.isInGame ? (
+              <p className="text-foreground">
+                {liveStatus.queueLabel}
+                {liveStatus.elapsedSeconds != null && (
+                  <span className="text-muted-foreground"> · {formatElapsed(liveStatus.elapsedSeconds)} elapsed</span>
+                )}
+              </p>
+            ) : liveStatus.error ? (
+              <p className="text-muted-foreground" title={liveStatus.error}>{liveStatus.statusLabel} — {liveStatus.error}</p>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
         <Card>
