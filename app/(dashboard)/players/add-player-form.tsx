@@ -56,6 +56,15 @@ export function AddPlayerForm() {
     }
   }
 
+  function handlePasteRiotId(e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData("text").trim();
+    const hashIdx = pasted.indexOf("#");
+    if (hashIdx === -1) return;
+    e.preventDefault();
+    setGameName(pasted.slice(0, hashIdx).trim());
+    setTagLine(pasted.slice(hashIdx + 1).trim());
+  }
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
       <div className="space-y-1.5">
@@ -64,7 +73,8 @@ export function AddPlayerForm() {
           id="gameName"
           value={gameName}
           onChange={(e) => setGameName(e.target.value)}
-          placeholder="Summoner"
+          onPaste={handlePasteRiotId}
+          placeholder="Summoner or Summoner#Tag"
           required
           className="w-36"
         />
@@ -75,6 +85,7 @@ export function AddPlayerForm() {
           id="tagLine"
           value={tagLine}
           onChange={(e) => setTagLine(e.target.value)}
+          onPaste={handlePasteRiotId}
           placeholder="NA1"
           required
           className="w-24"
