@@ -12,6 +12,7 @@ import { getMatchIdsByPuuid, getMatchById } from "./match";
 import { getSummonerByPuuid } from "./summoner";
 import { getRoutingRegion, isValidPlatform } from "./regions";
 import { snapshotMeaningfullyChanged } from "@/lib/lp-history";
+import { persistRankEventsForNewSnapshot } from "@/lib/rank-events";
 import type {
   RiotAccountDto,
   SummonerDto,
@@ -136,7 +137,7 @@ export async function syncRankedForPlayer(trackedPlayerId: string): Promise<void
     };
     if (!snapshotMeaningfullyChanged(latest, incoming)) continue;
 
-    await prisma.rankSnapshot.create({
+    const newSnapshot = await prisma.rankSnapshot.create({
       data: {
         trackedPlayerId: player.id,
         queueType: e.queueType,
@@ -147,6 +148,13 @@ export async function syncRankedForPlayer(trackedPlayerId: string): Promise<void
         losses: e.losses,
       },
     });
+
+    await persistRankEventsForNewSnapshot(
+      player.id,
+      e.queueType,
+      latest,
+      newSnapshot
+    );
   }
 }
 

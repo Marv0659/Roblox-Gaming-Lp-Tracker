@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPlayerDetail, estimatedLpForMatch } from "@/lib/leaderboard";
+import { getRecentRankEventsForPlayer } from "@/lib/rank-events";
 import { getPlayerBadges, getRoughPatchSummary, BADGE_TOOLTIPS } from "@/lib/player-badges";
 import { SyncButton } from "./sync-button";
 import { LpHistoryChart } from "@/components/lp-history-chart";
+import { RecentRankEvents } from "@/components/recent-rank-events";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +20,10 @@ export default async function PlayerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const player = await getPlayerDetail(id);
+  const [player, milestones] = await Promise.all([
+    getPlayerDetail(id),
+    getRecentRankEventsForPlayer(id, 15),
+  ]);
   if (!player) notFound();
 
   const rank = player.currentRank;
@@ -145,6 +150,15 @@ export default async function PlayerDetailPage({
             </dl>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="mb-8">
+        <RecentRankEvents
+          events={milestones}
+          showPlayerName={false}
+          title="Recent Milestones"
+          emptyMessage="No milestones yet. Sync to detect placements, promos, and new peaks."
+        />
       </div>
 
       <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">

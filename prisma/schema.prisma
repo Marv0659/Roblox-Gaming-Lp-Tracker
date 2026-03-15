@@ -83,6 +83,7 @@ model TrackedPlayer {
   routingRegion String // e.g. "europe", "americas" (regional routing for account-v1/match-v5)
 
   rankSnapshots     RankSnapshot[]
+  rankEvents        RankEvent[]
   matchParticipants MatchParticipant[]
 
   @@index([region])
@@ -104,6 +105,34 @@ model RankSnapshot {
   leaguePoints Int    @default(0)
   wins         Int    @default(0)
   losses       Int    @default(0)
+
+  @@index([trackedPlayerId, createdAt])
+  @@index([trackedPlayerId, queueType, createdAt])
+}
+
+/// Rank event: milestone from snapshot changes (placement, promo, demotion, new peak). Used for UI and future notifications.
+model RankEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  trackedPlayerId String
+  trackedPlayer   TrackedPlayer @relation(fields: [trackedPlayerId], references: [id], onDelete: Cascade)
+
+  eventType String // PLACED | PROMOTED | DEMOTED | NEW_PEAK | REACHED_100_LP
+  queueType String // e.g. RANKED_SOLO_5x5
+
+  // Before state (null for PLACED)
+  tierBefore       String?
+  rankBefore       String?
+  leaguePointsBefore Int?
+
+  // After state (always set)
+  tierAfter       String
+  rankAfter       String
+  leaguePointsAfter Int
+
+  // Snapshot that triggered this event (optional link; multiple events can reference same snapshot)
+  rankSnapshotId String?
 
   @@index([trackedPlayerId, createdAt])
   @@index([trackedPlayerId, queueType, createdAt])
