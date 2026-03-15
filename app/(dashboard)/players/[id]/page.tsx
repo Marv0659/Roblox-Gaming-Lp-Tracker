@@ -7,25 +7,10 @@ import { LpHistoryChart } from "@/components/lp-history-chart";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { tierColor } from "@/lib/tier-colors";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function tierColor(tier: string): string {
-  const colors: Record<string, string> = {
-    IRON: "text-zinc-400",
-    BRONZE: "text-amber-700",
-    SILVER: "text-zinc-300",
-    GOLD: "text-yellow-500",
-    PLATINUM: "text-sky-400",
-    EMERALD: "text-emerald-500",
-    DIAMOND: "text-cyan-400",
-    MASTER: "text-purple-400",
-    GRANDMASTER: "text-red-400",
-    CHALLENGER: "text-amber-400",
-  };
-  return colors[tier] ?? "text-muted-foreground";
-}
 
 export default async function PlayerDetailPage({
   params,
@@ -46,13 +31,13 @@ export default async function PlayerDetailPage({
   const last20Wins = last20.filter((m) => m.win).length;
 
   return (
-    <div className="p-6 md:p-8">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="p-4 sm:p-6 md:p-8">
+      <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Button variant="ghost" size="sm" className="mb-2 -ml-2 text-muted-foreground" asChild>
             <Link href="/players">← Players</Link>
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-xl font-bold tracking-tight break-words sm:text-2xl">
             {player.gameName}
             <span className="font-normal text-muted-foreground">#{player.tagLine}</span>
           </h1>
@@ -242,17 +227,17 @@ export default async function PlayerDetailPage({
               No matches stored. Sync to fetch recent ranked games.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto -webkit-overflow-scrolling-touch">
+              <table className="w-full min-w-[520px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground">
-                    <th className="pb-2 pr-4">Champion</th>
-                    <th className="pb-2 pr-4">K/D/A</th>
-                    <th className="pb-2 pr-4">Result</th>
-                    <th className="pb-2 pr-4" title="LP change: from snapshots (sync before/after match) when available, otherwise estimated.">LP</th>
-                    <th className="pb-2 pr-4">CS</th>
-                    <th className="pb-2 pr-4">Gold</th>
-                    <th className="pb-2 pr-4">Damage</th>
+                    <th className="pb-2 pr-2 sm:pr-4">Champion</th>
+                    <th className="pb-2 pr-2 sm:pr-4">K/D/A</th>
+                    <th className="pb-2 pr-2 sm:pr-4">Result</th>
+                    <th className="pb-2 pr-2 sm:pr-4" title="LP change: from snapshots (sync before/after match) when available, otherwise estimated.">LP</th>
+                    <th className="pb-2 pr-2 sm:pr-4">CS</th>
+                    <th className="pb-2 pr-2 sm:pr-4">Gold</th>
+                    <th className="pb-2 pr-2 sm:pr-4">Damage</th>
                     <th className="pb-2">Date</th>
                   </tr>
                 </thead>
@@ -265,13 +250,13 @@ export default async function PlayerDetailPage({
                       key={m.id}
                       className="border-b border-border text-muted-foreground last:border-b-0"
                     >
-                      <td className="py-2 pr-4 font-medium text-foreground">
+                      <td className="py-2 pr-2 font-medium text-foreground sm:pr-4">
                         {m.championName ?? "—"}
                       </td>
-                      <td className="py-2 pr-4">
+                      <td className="py-2 pr-2 sm:pr-4">
                         {m.kills}/{m.deaths}/{m.assists}
                       </td>
-                      <td className="py-2 pr-4">
+                      <td className="py-2 pr-2 sm:pr-4">
                         <span
                           className={
                             m.win ? "text-emerald-500" : "text-destructive"
@@ -280,14 +265,14 @@ export default async function PlayerDetailPage({
                           {m.win ? "Win" : "Loss"}
                         </span>
                       </td>
-                      <td className="py-2 pr-4" title={isCalculated ? "From rank snapshots (sync before and after this match)." : "Estimated (no snapshots bracketing this match; typical +24 win, -18 loss)."}>
+                      <td className="py-2 pr-2 sm:pr-4" title={isCalculated ? "From rank snapshots (sync before and after this match)." : "Estimated (no snapshots bracketing this match; typical +24 win, -18 loss)."}>
                         <span className={lp >= 0 ? "text-emerald-500 font-medium" : "text-destructive font-medium"}>
                           {lp >= 0 ? "+" : ""}{lp}
                         </span>
                       </td>
-                      <td className="py-2 pr-4">{m.cs}</td>
-                      <td className="py-2 pr-4">{m.gold.toLocaleString()}</td>
-                      <td className="py-2 pr-4">
+                      <td className="py-2 pr-2 sm:pr-4">{m.cs}</td>
+                      <td className="py-2 pr-2 sm:pr-4">{m.gold.toLocaleString()}</td>
+                      <td className="py-2 pr-2 sm:pr-4">
                         {m.damageDealt.toLocaleString()}
                       </td>
                       <td className="py-2 text-muted-foreground">

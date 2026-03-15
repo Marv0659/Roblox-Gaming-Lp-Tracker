@@ -19,6 +19,12 @@ export const metadata: Metadata = {
   description: "Friends-only gaming tracker",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,7 +36,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background text-foreground antialiased font-sans`}
       >
         <Providers>{children}</Providers>
-        <Toaster position="bottom-right" />
+        <Toaster position="bottom-center" />
       </body>
     </html>
   );

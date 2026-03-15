@@ -12,10 +12,10 @@ export default async function PlayersPage() {
   const players = await getTrackedPlayers();
 
   return (
-    <div className="p-6 md:p-8">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="p-4 sm:p-6 md:p-8">
+      <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tracked players</h1>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Tracked players</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Add by Riot ID (gameName#tagLine) and region
           </p>
@@ -43,19 +43,19 @@ export default async function PlayersPage() {
             return (
               <li key={p.id}>
                 <Card className="transition-colors hover:bg-muted/30">
-                  <CardContent className="flex flex-row items-center justify-between px-4 py-3">
-                    <div className="flex items-center gap-2">
+                  <CardContent className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <Link
                         href={`/players/${p.id}`}
-                        className="font-medium text-foreground hover:text-primary"
+                        className="truncate font-medium text-foreground hover:text-primary"
                       >
                         {p.gameName}#{p.tagLine}
                       </Link>
-                      <Badge variant="secondary" className="text-xs font-normal uppercase" title="Server/region where this account plays (e.g. EUW, NA).">
+                      <Badge variant="secondary" className="shrink-0 text-xs font-normal uppercase" title="Server/region where this account plays (e.g. EUW, NA).">
                         {p.region}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                       {snap ? (
                         <span className="text-sm text-muted-foreground" title="Current tier, division, and League Points (LP). Sync to update.">
                           {snap.tier} {snap.rank} — {snap.leaguePoints} LP
@@ -65,7 +65,7 @@ export default async function PlayersPage() {
                           No rank (sync to fetch)
                         </span>
                       )}
-                      <Button variant="link" size="sm" className="h-auto p-0" asChild>
+                      <Button variant="link" size="sm" className="h-auto shrink-0 p-0" asChild>
                         <Link href={`/players/${p.id}`}>View →</Link>
                       </Button>
                     </div>

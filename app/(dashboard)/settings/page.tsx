@@ -4,8 +4,8 @@ export const dynamic = "force-dynamic";
 
 export default function SettingsPage() {
   return (
-    <div className="p-6 md:p-8">
-      <h1 className="mb-8 text-2xl font-bold tracking-tight">Settings</h1>
+    <div className="p-4 sm:p-6 md:p-8">
+      <h1 className="mb-6 text-xl font-bold tracking-tight sm:mb-8 sm:text-2xl">Settings</h1>
 
       <Card className="max-w-xl">
         <CardHeader>

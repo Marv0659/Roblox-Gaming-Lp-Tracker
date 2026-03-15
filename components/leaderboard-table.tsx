@@ -1,5 +1,6 @@
 import type { LeaderboardEntry } from "@/lib/leaderboard";
 import { LeaderboardRow } from "./leaderboard-row";
+import { LeaderboardCard } from "./leaderboard-card";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -10,7 +11,7 @@ interface Props {
 export function LeaderboardTable({ entries }: Props) {
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
+      <div className="flex flex-col gap-2 border-b border-border bg-muted/30 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
         <div className="flex items-baseline gap-2">
           <h2 className="text-sm font-semibold tracking-wide">
             Solo Queue Leaderboard
@@ -19,11 +20,19 @@ export function LeaderboardTable({ entries }: Props) {
             {entries.length} players
           </span>
         </div>
-        <Badge variant="secondary" className="font-normal" title="This leaderboard only includes players you’ve added; it’s not the public ranked ladder.">
+        <Badge variant="secondary" className="w-fit font-normal" title="This leaderboard only includes players you’ve added; it’s not the public ranked ladder.">
           Private lobby
         </Badge>
       </div>
-      <div className="overflow-x-auto">
+      {/* Mobile: card list — no horizontal scroll, all info at a glance */}
+      <div className="space-y-2 p-3 md:hidden">
+        {entries.map((entry, index) => (
+          <LeaderboardCard key={entry.id} entry={entry} index={index} />
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden overflow-x-auto -webkit-overflow-scrolling-touch md:block">
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/20 text-xs uppercase tracking-wide text-muted-foreground">
