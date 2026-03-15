@@ -1,7 +1,6 @@
-import { getLeaderboard, getLeaderboardRegions } from "@/lib/leaderboard";
-import { getRecentRankEvents } from "@/lib/rank-events";
+import { getLeaderboard, getLeaderboardRegions, getRecentMatchFeed } from "@/lib/leaderboard";
 import { LeaderboardTable } from "@/components/leaderboard-table";
-import { RecentRankEvents } from "@/components/recent-rank-events";
+import { RecentMatchFeed } from "@/components/recent-match-feed";
 import { LeaderboardFilters } from "./leaderboard-filters";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -17,10 +16,10 @@ export default async function DashboardPage({
     region: params.region || undefined,
     queue: params.queue || undefined,
   };
-  const [entries, regions, recentEvents] = await Promise.all([
+  const [entries, regions, recentMatches] = await Promise.all([
     getLeaderboard(filters),
     getLeaderboardRegions(),
-    getRecentRankEvents(20),
+    getRecentMatchFeed(20),
   ]);
 
   return (
@@ -38,11 +37,11 @@ export default async function DashboardPage({
       </div>
 
       <div className="mb-8">
-        <RecentRankEvents
-          events={recentEvents}
-          showPlayerName
-          title="Recent Ranked Events"
-          emptyMessage="No rank events yet. Sync players to detect placements, promos, and demotions."
+        <RecentMatchFeed
+          items={recentMatches}
+          title="Recent games"
+          emptyMessage="No games yet. Sync players to fetch recent ranked matches."
+          maxItems={6}
         />
       </div>
 
