@@ -130,7 +130,6 @@ export async function getBeastestHolder(): Promise<{
     include: {
       matchParticipants: {
         where: { match: { gameStartAt: { gte: since } } },
-        select: { win: true },
         include: { match: { select: { gameStartAt: true } } },
       },
     },
