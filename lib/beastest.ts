@@ -127,7 +127,6 @@ export async function getBeastestHolder(): Promise<{
   const since = new Date(now.getTime() - WEEKS_REQUIRED * DAYS_PER_WEEK * MS_PER_DAY);
 
   const players = await prisma.trackedPlayer.findMany({
-    select: { id: true, gameName: true, tagLine: true },
     include: {
       matchParticipants: {
         where: { match: { gameStartAt: { gte: since } } },
