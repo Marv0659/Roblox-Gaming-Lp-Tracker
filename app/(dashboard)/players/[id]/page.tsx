@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPlayerDetail } from "@/lib/leaderboard";
+import { getPlayerDetail, estimatedLpForMatch } from "@/lib/leaderboard";
 import { getPlayerBadges, getRoughPatchSummary, BADGE_TOOLTIPS } from "@/lib/player-badges";
 import { SyncButton } from "./sync-button";
 import { LpHistoryChart } from "@/components/lp-history-chart";
@@ -249,6 +249,7 @@ export default async function PlayerDetailPage({
                     <th className="pb-2 pr-4">Champion</th>
                     <th className="pb-2 pr-4">K/D/A</th>
                     <th className="pb-2 pr-4">Result</th>
+                    <th className="pb-2 pr-4" title="LP change: from snapshots (sync before/after match) when available, otherwise estimated.">LP</th>
                     <th className="pb-2 pr-4">CS</th>
                     <th className="pb-2 pr-4">Gold</th>
                     <th className="pb-2 pr-4">Damage</th>
@@ -256,7 +257,10 @@ export default async function PlayerDetailPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {player.recentMatches.map((m) => (
+                  {player.recentMatches.map((m) => {
+                    const lp = m.lpChange ?? estimatedLpForMatch(m.win);
+                    const isCalculated = m.lpChange !== null;
+                    return (
                     <tr
                       key={m.id}
                       className="border-b border-border text-muted-foreground last:border-b-0"
@@ -276,6 +280,11 @@ export default async function PlayerDetailPage({
                           {m.win ? "Win" : "Loss"}
                         </span>
                       </td>
+                      <td className="py-2 pr-4" title={isCalculated ? "From rank snapshots (sync before and after this match)." : "Estimated (no snapshots bracketing this match; typical +24 win, -18 loss)."}>
+                        <span className={lp >= 0 ? "text-emerald-500 font-medium" : "text-destructive font-medium"}>
+                          {lp >= 0 ? "+" : ""}{lp}
+                        </span>
+                      </td>
                       <td className="py-2 pr-4">{m.cs}</td>
                       <td className="py-2 pr-4">{m.gold.toLocaleString()}</td>
                       <td className="py-2 pr-4">
@@ -290,7 +299,7 @@ export default async function PlayerDetailPage({
                         </Link>
                       </td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>

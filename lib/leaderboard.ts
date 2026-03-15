@@ -12,6 +12,14 @@ export const QUEUE_OPTIONS = [
   { value: FLEX_QUEUE, label: "Flex 5v5" },
 ] as const;
 
+/** Typical LP change per match (Riot doesn't provide per-match LP). Used for display only. */
+export const ESTIMATED_LP_WIN = 24;
+export const ESTIMATED_LP_LOSS = -18;
+
+export function estimatedLpForMatch(win: boolean): number {
+  return win ? ESTIMATED_LP_WIN : ESTIMATED_LP_LOSS;
+}
+
 // Tier order for sorting (lowest = worst)
 const TIER_ORDER: Record<string, number> = {
   IRON: 0,
@@ -221,6 +229,8 @@ export interface PlayerDetail {
     visionScore: number;
     gameStartAt: Date;
     gameDuration: number;
+    /** LP change from snapshot-after minus snapshot-before (null if we can't bracket this match). */
+    lpChange: number | null;
   }>;
 }
 
@@ -241,8 +251,19 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
   });
   if (!player) return null;
 
+  const soloSnapshots = player.rankSnapshots
+    .filter((s) => s.queueType === SOLO_QUEUE)
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const soloSnap = player.rankSnapshots.find((s) => s.queueType === SOLO_QUEUE);
   const total = soloSnap ? soloSnap.wins + soloSnap.losses : 0;
+
+  function lpChangeForMatch(gameStartAt: Date): number | null {
+    const t = gameStartAt.getTime();
+    const before = [...soloSnapshots].filter((s) => s.createdAt.getTime() < t).pop();
+    const after = soloSnapshots.find((s) => s.createdAt.getTime() > t);
+    if (!before || !after) return null;
+    return after.leaguePoints - before.leaguePoints;
+  }
 
   const funStats = computeDerivedPlayerStats(
     {
@@ -307,6 +328,7 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
       visionScore: mp.visionScore,
       gameStartAt: mp.match.gameStartAt,
       gameDuration: mp.match.gameDuration,
+      lpChange: lpChangeForMatch(mp.match.gameStartAt),
     })),
   };
 }
