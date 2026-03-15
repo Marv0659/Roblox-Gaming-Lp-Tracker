@@ -235,6 +235,7 @@ import {
   getBiggestDrop,
   type LpHistoryEntry,
 } from "@/lib/lp-history";
+import { computeChampionTrust, type ChampionTrustResult } from "@/lib/champion-trust";
 
 /** Player fun/social stats; computed by derived-stats layer from existing DB data. */
 export type PlayerFunStats = DerivedPlayerStats;
@@ -289,6 +290,8 @@ export interface PlayerDetail {
   }>;
   /** LP history with deltas and match attribution for charts/feed. Solo queue by default. */
   lpHistory: LpHistoryEntry[];
+  /** Per-champion trust labels (TRUSTED, COINFLIP, DO_NOT_ALLOW, FAKE_COMFORT_PICK). */
+  championTrust: ChampionTrustResult[];
 }
 
 /** LP-derived stats for leaderboards (7d/30d gain, biggest climb/drop). Uses only DB data. */
@@ -408,6 +411,16 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
     SOLO_QUEUE
   );
 
+  const matchInputs = player.matchParticipants.map((m) => ({
+    win: m.win,
+    championName: m.championName,
+    kills: m.kills,
+    deaths: m.deaths,
+    assists: m.assists,
+    gameStartAt: m.match.gameStartAt,
+  }));
+  const championTrust = computeChampionTrust(matchInputs);
+
   return {
     id: player.id,
     gameName: player.gameName,
@@ -455,5 +468,6 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
       lpChange: lpChangeForMatch(mp.match.gameStartAt),
     })),
     lpHistory,
+    championTrust,
   };
 }

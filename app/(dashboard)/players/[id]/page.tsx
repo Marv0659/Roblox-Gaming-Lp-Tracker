@@ -4,6 +4,7 @@ import { getPlayerDetail, estimatedLpForMatch } from "@/lib/leaderboard";
 import { getRecentRankEventsForPlayer } from "@/lib/rank-events";
 import { getPlayerBadges, getRoughPatchSummary, BADGE_TOOLTIPS } from "@/lib/player-badges";
 import { getBeastestHolder } from "@/lib/beastest";
+import type { ChampionTrustLabel } from "@/lib/champion-trust";
 import { SyncButton } from "./sync-button";
 import { LpHistoryChart } from "@/components/lp-history-chart";
 import { RecentRankEvents } from "@/components/recent-rank-events";
@@ -12,6 +13,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { tierColor } from "@/lib/tier-colors";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
+
+function ChampionTrustBadge({ label }: { label: ChampionTrustLabel }) {
+  const styles: Record<ChampionTrustLabel, string> = {
+    TRUSTED: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+    COINFLIP: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    DO_NOT_ALLOW: "bg-destructive/20 text-destructive border-destructive/30",
+    FAKE_COMFORT_PICK: "bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30",
+    INSUFFICIENT_DATA: "bg-muted text-muted-foreground border-border",
+  };
+  return (
+    <Badge
+      variant="outline"
+      className={cn("text-[10px] font-medium uppercase tracking-wide", styles[label])}
+    >
+      {label.replace(/_/g, " ")}
+    </Badge>
+  );
+}
 
 export const dynamic = "force-dynamic";
 
@@ -217,6 +236,25 @@ export default async function PlayerDetailPage({
                 </dd>
               </div>
             </dl>
+            {player.championTrust.length > 0 && (
+              <div className="mt-4 border-t border-border pt-4">
+                <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Champion trust
+                </h3>
+                <ul className="space-y-1.5 text-sm">
+                  {player.championTrust.map((c) => (
+                    <li
+                      key={c.championName}
+                      className="flex flex-wrap items-baseline gap-2"
+                    >
+                      <span className="font-medium text-foreground">{c.championName}</span>
+                      <ChampionTrustBadge label={c.trustLabel} />
+                      <span className="text-muted-foreground">{c.trustReason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </CardContent>
         </Card>
 

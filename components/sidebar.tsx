@@ -11,6 +11,7 @@ const nav = [
   { href: "/recap", label: "Weekly recap" },
   { href: "/hall-of-fame", label: "Hall of fame" },
   { href: "/hall-of-shame", label: "Hall of shame" },
+  { href: "/champion-trust", label: "Champion trust" },
   { href: "/settings", label: "Settings" },
 ];
 
