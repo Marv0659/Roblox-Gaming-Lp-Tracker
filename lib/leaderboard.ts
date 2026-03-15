@@ -320,7 +320,7 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
       },
       matchParticipants: {
         include: { match: true },
-        orderBy: { createdAt: "desc" },
+        orderBy: { match: { gameStartAt: "desc" } },
         take: 40,
       },
     },

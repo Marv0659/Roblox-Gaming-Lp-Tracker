@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { tierColor } from "@/lib/tier-colors";
-import { cn } from "@/lib/utils";
+import { cn, formatDate, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +82,7 @@ export default async function PlayerDetailPage({
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Snapshot: {new Date(rank.snapshotAt).toLocaleString()}
+                  Snapshot: {formatDateTime(rank.snapshotAt)}
                 </div>
               </div>
             ) : (
@@ -294,7 +294,7 @@ export default async function PlayerDetailPage({
                           href={`/matches/${m.matchDbId}`}
                           className="text-primary hover:underline"
                         >
-                          {new Date(m.gameStartAt).toLocaleDateString()}
+                          {formatDate(m.gameStartAt)}
                         </Link>
                       </td>
                     </tr>
@@ -326,7 +326,7 @@ export default async function PlayerDetailPage({
                   .map((s, i) => (
                     <li key={i}>
                       {s.tier} {s.rank} {s.leaguePoints} LP —{" "}
-                      {new Date(s.createdAt).toLocaleString()}
+                      {formatDateTime(s.createdAt)}
                     </li>
                   ))}
               </ul>
