@@ -53,7 +53,7 @@ function CategorySection({
             {entries.slice(0, 5).map((e) => (
               <li
                 key={e.player.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2"
+                className="flex flex-col gap-1 rounded-lg border border-border bg-muted/20 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
               >
                 <PlayerLink {...e.player} />
                 <div className="flex items-center gap-2 text-sm">
