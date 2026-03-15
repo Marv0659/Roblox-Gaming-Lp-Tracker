@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
 
-export default async function AuthLayout({
+// No login: redirect any /auth/* to dashboard.
+export default function AuthLayout({
   children,
 }: { children: React.ReactNode }) {
-  const session = await auth();
-  if (session?.user) redirect("/dashboard");
-  return <>{children}</>;
+  redirect("/dashboard");
 }

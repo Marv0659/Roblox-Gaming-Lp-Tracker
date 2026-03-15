@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCanAddPlayers, getTrackedPlayers } from "@/app/actions/players";
+import { getTrackedPlayers } from "@/app/actions/players";
 import { AddPlayerForm } from "./add-player-form";
 import { SyncAllButton } from "./sync-all-button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,10 +9,7 @@ import { Button } from "@/components/ui/button";
 export const dynamic = "force-dynamic";
 
 export default async function PlayersPage() {
-  const [players, canAdd] = await Promise.all([
-    getTrackedPlayers(),
-    getCanAddPlayers(),
-  ]);
+  const players = await getTrackedPlayers();
 
   return (
     <div className="p-6 md:p-8">
@@ -20,14 +17,12 @@ export default async function PlayersPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Tracked players</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {canAdd
-              ? "Add by Riot ID (gameName#tagLine) and region"
-              : "View tracked players and ranks"}
+            Add by Riot ID (gameName#tagLine) and region
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {players.length > 0 && <SyncAllButton />}
-          {canAdd && <AddPlayerForm />}
+          <AddPlayerForm />
         </div>
       </div>
 
@@ -35,12 +30,10 @@ export default async function PlayersPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <p className="text-muted-foreground">No players added yet.</p>
-            {canAdd && (
-              <p className="mt-2 text-sm text-muted-foreground/80">
-                Use the form above to add a player by Riot ID and region (e.g. na1,
-                euw1).
-              </p>
-            )}
+            <p className="mt-2 text-sm text-muted-foreground/80">
+              Use the form above to add a player by Riot ID and region (e.g. na1,
+              euw1).
+            </p>
           </CardContent>
         </Card>
       ) : (

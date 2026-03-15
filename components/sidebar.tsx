@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SignOutButton } from "./sign-out-button";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -43,9 +42,6 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
-      <div className="border-t border-sidebar-border p-2">
-        <SignOutButton />
-      </div>
     </aside>
   );
 }
