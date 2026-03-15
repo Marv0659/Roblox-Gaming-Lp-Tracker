@@ -41,23 +41,23 @@ export function LeaderboardRow({ entry, index }: Props) {
           </span>
         </div>
       </td>
-      <td className="px-4 py-3 text-xs uppercase text-muted-foreground">
+      <td className="px-4 py-3 text-xs uppercase text-muted-foreground" title="Server/region (e.g. EUW, NA).">
         {entry.region}
       </td>
-      <td className={cn("px-4 py-3 text-sm font-semibold", tierColor(entry.tier))}>
+      <td className={cn("px-4 py-3 text-sm font-semibold", tierColor(entry.tier))} title="Ranked tier and division (I–IV; Master+ has no division).">
         {entry.tier}{" "}
         <span className="font-normal text-muted-foreground">{entry.rank || ""}</span>
       </td>
-      <td className="px-4 py-3 text-sm">
+      <td className="px-4 py-3 text-sm" title="League Points: 0–100 per division; resets when you promote.">
         {entry.leaguePoints}
         <span className="ml-1 text-xs text-muted-foreground">LP</span>
       </td>
-      <td className="px-4 py-3 text-sm">
+      <td className="px-4 py-3 text-sm" title="Wins / losses in this queue this season.">
         <span className="font-medium text-emerald-500">{entry.wins}</span>
         <span className="mx-1 text-muted-foreground">/</span>
         <span className="font-medium text-destructive">{entry.losses}</span>
       </td>
-      <td className="px-4 py-3 text-sm">
+      <td className="px-4 py-3 text-sm" title="Win rate % (wins ÷ total games).">
         {entry.winrate != null ? (
           <>
             {entry.winrate.toFixed(1)}

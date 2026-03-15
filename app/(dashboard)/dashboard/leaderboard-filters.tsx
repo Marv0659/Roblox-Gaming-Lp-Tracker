@@ -38,7 +38,7 @@ export function LeaderboardFilters({ regions }: LeaderboardFiltersProps) {
   return (
     <div className="flex flex-wrap items-end gap-3">
       <div className="space-y-1.5">
-        <Label>Region</Label>
+        <Label title="Filter by server (e.g. EUW, NA). Leave as All to show every region.">Region</Label>
         <Select value={region} onValueChange={setRegion}>
           <SelectTrigger className="w-28">
             <SelectValue />
@@ -54,7 +54,7 @@ export function LeaderboardFilters({ regions }: LeaderboardFiltersProps) {
         </Select>
       </div>
       <div className="space-y-1.5">
-        <Label>Queue</Label>
+        <Label title="Solo/Duo = ranked solo queue; Flex 5v5 = ranked flex.">Queue</Label>
         <Select value={queue} onValueChange={setQueue}>
           <SelectTrigger className="w-32">
             <SelectValue />

@@ -65,6 +65,20 @@ export function getPlayerBadges(stats: DerivedPlayerStats): string[] {
   return badges;
 }
 
+/** Hover tooltips for each funny title badge. */
+export const BADGE_TOOLTIPS: Record<string, string> = {
+  "LP Machine": "Gained 50+ LP in the last 30 days.",
+  Climbing: "Gained 25+ LP in the last 7 days.",
+  "On a Heater": "Currently on a 4+ win streak.",
+  "Hot Hand": "70%+ win rate over the last 20 games.",
+  Grinder: "Played 10+ ranked games in the last 7 days.",
+  "One-Trick Energy": "One champion with 5+ games and a strong win rate.",
+  Stubborn: "Still picking a champion with low win rate after several games.",
+  "LP Bleeder": "Lost 30+ LP in the last 7 days.",
+  "Cold Streak": "Currently on a 4+ loss streak.",
+  "Rough Patch": "35% or lower win rate over the last 20 games.",
+};
+
 export type RoughPatchSeverity = "low" | "medium" | "high";
 
 export interface RoughPatchSummary {

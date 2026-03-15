@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPlayerDetail } from "@/lib/leaderboard";
-import { getPlayerBadges, getRoughPatchSummary } from "@/lib/player-badges";
+import { getPlayerBadges, getRoughPatchSummary, BADGE_TOOLTIPS } from "@/lib/player-badges";
 import { SyncButton } from "./sync-button";
 import { LpHistoryChart } from "@/components/lp-history-chart";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -57,12 +57,12 @@ export default async function PlayerDetailPage({
             <span className="font-normal text-muted-foreground">#{player.tagLine}</span>
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="font-normal uppercase">
+            <Badge variant="secondary" className="font-normal uppercase" title="Server/region where this account plays (e.g. EUW, NA).">
               {player.region}
             </Badge>
             {badges.length > 0 &&
               badges.map((b) => (
-                <Badge key={b} variant="outline" className="font-normal">
+                <Badge key={b} variant="outline" className="font-normal" title={BADGE_TOOLTIPS[b] ?? ""}>
                   {b}
                 </Badge>
               ))}
@@ -74,7 +74,7 @@ export default async function PlayerDetailPage({
       <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-semibold">Current rank</h2>
+            <h2 className="text-lg font-semibold" title="Latest ranked tier, division, LP, and win/loss for this queue. Updated when you sync.">Current rank</h2>
           </CardHeader>
           <CardContent>
             {rank ? (
@@ -83,7 +83,7 @@ export default async function PlayerDetailPage({
                   <span className={cn("text-xl font-bold", tierColor(rank.tier))}>
                     {rank.tier} {rank.rank}
                   </span>
-                  <span className="ml-2 text-muted-foreground">{rank.leaguePoints} LP</span>
+                  <span className="ml-2 text-muted-foreground" title="League Points: progress within the current division (0–100).">{rank.leaguePoints} LP</span>
                 </div>
                 <div className="text-muted-foreground">
                   {rank.wins}W / {rank.losses}L
@@ -110,14 +110,14 @@ export default async function PlayerDetailPage({
           <CardContent>
             <dl className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
               <div>
-                <dt className="text-xs uppercase tracking-wide">LP last 7 days</dt>
+                <dt className="text-xs uppercase tracking-wide" title="Net League Points gained or lost over the last 7 days.">LP last 7 days</dt>
                 <dd className="text-base font-medium text-foreground">
                   {player.funStats.lpGained7d >= 0 ? "+" : ""}
                   {player.funStats.lpGained7d} LP
                 </dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wide">LP last 30 days</dt>
+                <dt className="text-xs uppercase tracking-wide" title="Net League Points gained or lost over the last 30 days.">LP last 30 days</dt>
                 <dd className="text-base font-medium text-foreground">
                   {player.funStats.lpGained30d >= 0 ? "+" : ""}
                   {player.funStats.lpGained30d} LP
@@ -142,7 +142,7 @@ export default async function PlayerDetailPage({
                 </dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wide">Win streak</dt>
+                <dt className="text-xs uppercase tracking-wide" title="Current number of consecutive wins.">Win streak</dt>
                 <dd className="text-base font-medium text-foreground">
                   {player.funStats.currentWinStreak > 0
                     ? `W${player.funStats.currentWinStreak}`
@@ -150,7 +150,7 @@ export default async function PlayerDetailPage({
                 </dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wide">Loss streak</dt>
+                <dt className="text-xs uppercase tracking-wide" title="Current number of consecutive losses.">Loss streak</dt>
                 <dd className="text-base font-medium text-foreground">
                   {player.funStats.currentLossStreak > 0
                     ? `L${player.funStats.currentLossStreak}`

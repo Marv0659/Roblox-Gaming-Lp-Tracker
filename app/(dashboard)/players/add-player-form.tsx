@@ -68,7 +68,7 @@ export function AddPlayerForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
       <div className="space-y-1.5">
-        <Label htmlFor="gameName">Game name</Label>
+        <Label htmlFor="gameName" title="The in-game name (first part of Riot ID). You can paste full Riot ID (name#tag) here to fill both fields.">Game name</Label>
         <Input
           id="gameName"
           value={gameName}
@@ -80,7 +80,7 @@ export function AddPlayerForm() {
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="tagLine">Tag line</Label>
+        <Label htmlFor="tagLine" title="The tag after # in Riot ID (e.g. NA1, EUW). Paste name#tag in either field to fill both.">Tag line</Label>
         <Input
           id="tagLine"
           value={tagLine}
@@ -92,7 +92,7 @@ export function AddPlayerForm() {
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Region</Label>
+        <Label title="Server/region where the account plays (e.g. euw1 = Europe West, na1 = North America).">Region</Label>
         <Select value={region} onValueChange={setRegion}>
           <SelectTrigger className="w-24">
             <SelectValue />

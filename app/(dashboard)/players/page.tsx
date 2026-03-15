@@ -51,17 +51,17 @@ export default async function PlayersPage() {
                       >
                         {p.gameName}#{p.tagLine}
                       </Link>
-                      <Badge variant="secondary" className="text-xs font-normal uppercase">
+                      <Badge variant="secondary" className="text-xs font-normal uppercase" title="Server/region where this account plays (e.g. EUW, NA).">
                         {p.region}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-4">
                       {snap ? (
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-sm text-muted-foreground" title="Current tier, division, and League Points (LP). Sync to update.">
                           {snap.tier} {snap.rank} — {snap.leaguePoints} LP
                         </span>
                       ) : (
-                        <span className="text-sm text-muted-foreground/80">
+                        <span className="text-sm text-muted-foreground/80" title="No ranked data yet. Use Sync on this player or Sync all to fetch from Riot.">
                           No rank (sync to fetch)
                         </span>
                       )}
