@@ -11,6 +11,7 @@ import { getLeagueEntriesByPuuid } from "./league";
 import { getMatchIdsByPuuid, getMatchById } from "./match";
 import { getSummonerByPuuid } from "./summoner";
 import { getRoutingRegion, isValidPlatform } from "./regions";
+import { snapshotMeaningfullyChanged } from "@/lib/lp-history";
 import type {
   RiotAccountDto,
   SummonerDto,
@@ -105,7 +106,8 @@ export async function onboardTrackedPlayer(
 }
 
 /**
- * Sync ranked data for a tracked player: fetch league entries (by-puuid) and store new snapshots.
+ * Sync ranked data for a tracked player: fetch league entries (by-puuid) and store new snapshots
+ * only when something meaningful changed (tier, rank, LP, wins, losses). Ignores unchanged syncs.
  */
 export async function syncRankedForPlayer(trackedPlayerId: string): Promise<void> {
   const player = await prisma.trackedPlayer.findUnique({
@@ -117,6 +119,23 @@ export async function syncRankedForPlayer(trackedPlayerId: string): Promise<void
   const entries = await getLeagueEntriesByPuuid(player.region, player.puuid);
 
   for (const e of entries) {
+    const latest = await prisma.rankSnapshot.findFirst({
+      where: {
+        trackedPlayerId: player.id,
+        queueType: e.queueType,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const incoming = {
+      tier: e.tier,
+      rank: e.rank,
+      leaguePoints: e.leaguePoints,
+      wins: e.wins,
+      losses: e.losses,
+    };
+    if (!snapshotMeaningfullyChanged(latest, incoming)) continue;
+
     await prisma.rankSnapshot.create({
       data: {
         trackedPlayerId: player.id,

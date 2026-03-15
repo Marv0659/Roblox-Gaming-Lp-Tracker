@@ -183,9 +183,22 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail | nul
 
 import type { DerivedPlayerStats } from "@/lib/derived-stats";
 import { computeDerivedPlayerStats } from "@/lib/derived-stats";
+import {
+  buildLpHistory,
+  deriveSnapshotDeltas,
+  associateMatchesWithDeltas,
+  getLpGainedLast7d,
+  getLpGainedLast30d,
+  getBiggestClimb,
+  getBiggestDrop,
+  type LpHistoryEntry,
+} from "@/lib/lp-history";
 
 /** Player fun/social stats; computed by derived-stats layer from existing DB data. */
 export type PlayerFunStats = DerivedPlayerStats;
+
+/** Re-export for profile/charts. */
+export type { LpHistoryEntry };
 
 export interface PlayerDetail {
   id: string;
@@ -232,6 +245,69 @@ export interface PlayerDetail {
     /** LP change from snapshot-after minus snapshot-before (null if we can't bracket this match). */
     lpChange: number | null;
   }>;
+  /** LP history with deltas and match attribution for charts/feed. Solo queue by default. */
+  lpHistory: LpHistoryEntry[];
+}
+
+/** LP-derived stats for leaderboards (7d/30d gain, biggest climb/drop). Uses only DB data. */
+export interface LpDerivedStats {
+  lpGained7d: number;
+  lpGained30d: number;
+  biggestClimb: number;
+  biggestDrop: number;
+}
+
+/**
+ * Returns LP history for a tracked player (snapshots + deltas + match attribution).
+ * Use for LP charts and recent LP change feed.
+ */
+export async function getLpHistoryForPlayer(
+  trackedPlayerId: string,
+  queueType: string = SOLO_QUEUE
+): Promise<LpHistoryEntry[]> {
+  const [snapshots, matchParticipants] = await Promise.all([
+    prisma.rankSnapshot.findMany({
+      where: { trackedPlayerId, queueType },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.matchParticipant.findMany({
+      where: { trackedPlayerId },
+      include: { match: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  const matches = matchParticipants.map((mp) => ({ gameStartAt: mp.match.gameStartAt }));
+  return buildLpHistory(snapshots, matches, queueType);
+}
+
+/**
+ * Returns LP-derived stats for leaderboard/profile (7d/30d gain, biggest climb/drop).
+ * Uses only stored snapshots and matches; no Riot API.
+ */
+export async function getLpDerivedStatsForPlayer(
+  trackedPlayerId: string,
+  queueType: string = SOLO_QUEUE,
+  now: Date = new Date()
+): Promise<LpDerivedStats> {
+  const [snapshots, matchParticipants] = await Promise.all([
+    prisma.rankSnapshot.findMany({
+      where: { trackedPlayerId, queueType },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.matchParticipant.findMany({
+      where: { trackedPlayerId },
+      include: { match: true },
+    }),
+  ]);
+  const matches = matchParticipants.map((mp) => ({ gameStartAt: mp.match.gameStartAt }));
+  const deltas = deriveSnapshotDeltas(snapshots, queueType);
+  associateMatchesWithDeltas(deltas, matches);
+  return {
+    lpGained7d: getLpGainedLast7d(deltas, now),
+    lpGained30d: getLpGainedLast30d(deltas, now),
+    biggestClimb: getBiggestClimb(deltas, now),
+    biggestDrop: getBiggestDrop(deltas, now),
+  };
 }
 
 export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDetail | null> {
@@ -284,6 +360,12 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
     { queueType: SOLO_QUEUE }
   );
 
+  const lpHistory = buildLpHistory(
+    player.rankSnapshots,
+    player.matchParticipants.map((mp) => ({ gameStartAt: mp.match.gameStartAt })),
+    SOLO_QUEUE
+  );
+
   return {
     id: player.id,
     gameName: player.gameName,
@@ -330,5 +412,6 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
       gameDuration: mp.match.gameDuration,
       lpChange: lpChangeForMatch(mp.match.gameStartAt),
     })),
+    lpHistory,
   };
 }
