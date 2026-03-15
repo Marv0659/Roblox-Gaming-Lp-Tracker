@@ -18,12 +18,30 @@ const STUBBORN_CHAMP_MIN_GAMES = 4;
 const STUBBORN_CHAMP_MAX_WR = 40;
 // ----------------------------------------------
 
+/** Options for getPlayerBadges (e.g. exclusive tags that only one player can have). */
+export interface GetPlayerBadgesOptions {
+  /** If set and equals the current player id, "THE BEASTEST" is included. */
+  beastestHolderId?: string | null;
+}
+
 /**
  * Returns a list of funny badge/title strings for the player based on funStats.
- * Order: positive badges first, then neutral, then "rough" ones.
+ * Order: exclusive first (THE BEASTEST), then positive, neutral, then "rough".
  */
-export function getPlayerBadges(stats: DerivedPlayerStats): string[] {
+export function getPlayerBadges(
+  stats: DerivedPlayerStats,
+  currentPlayerId?: string,
+  options?: GetPlayerBadgesOptions
+): string[] {
   const badges: string[] = [];
+
+  if (
+    currentPlayerId &&
+    options?.beastestHolderId &&
+    currentPlayerId === options.beastestHolderId
+  ) {
+    badges.push("THE BEASTEST");
+  }
 
   if (stats.lpGained30d >= LP_GAIN_30D_STRONG) {
     badges.push("LP Machine");
@@ -67,6 +85,8 @@ export function getPlayerBadges(stats: DerivedPlayerStats): string[] {
 
 /** Hover tooltips for each funny title badge. */
 export const BADGE_TOOLTIPS: Record<string, string> = {
+  "THE BEASTEST":
+    "Ultimate exclusive: only one person can hold it. 6-game win streak in each of the last 7 weeks.",
   "LP Machine": "Gained 50+ LP in the last 30 days.",
   Climbing: "Gained 25+ LP in the last 7 days.",
   "On a Heater": "Currently on a 4+ win streak.",
