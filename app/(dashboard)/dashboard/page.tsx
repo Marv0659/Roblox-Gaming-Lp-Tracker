@@ -1,8 +1,11 @@
+import Link from "next/link";
 import { getLeaderboard, getLeaderboardRegions, getRecentMatchFeed } from "@/lib/leaderboard";
+import { getBeastestHolder, BEASTEST_TOOLTIP } from "@/lib/beastest";
 import { LeaderboardTable } from "@/components/leaderboard-table";
 import { RecentMatchFeed } from "@/components/recent-match-feed";
 import { LeaderboardFilters } from "./leaderboard-filters";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +19,11 @@ export default async function DashboardPage({
     region: params.region || undefined,
     queue: params.queue || undefined,
   };
-  const [entries, regions, recentMatches] = await Promise.all([
+  const [entries, regions, recentMatches, beastestHolder] = await Promise.all([
     getLeaderboard(filters),
     getLeaderboardRegions(),
     getRecentMatchFeed(20),
+    getBeastestHolder(),
   ]);
 
   return (
@@ -35,6 +39,24 @@ export default async function DashboardPage({
         </div>
         <LeaderboardFilters regions={regions} />
       </div>
+
+      {beastestHolder && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Badge
+            className="bg-amber-500/90 font-semibold text-black hover:bg-amber-500"
+            title={BEASTEST_TOOLTIP}
+          >
+            THE BEASTEST
+          </Badge>
+          <span className="text-sm text-muted-foreground">→</span>
+          <Link
+            href={`/players/${beastestHolder.id}`}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            {beastestHolder.gameName}#{beastestHolder.tagLine}
+          </Link>
+        </div>
+      )}
 
       <div className="mb-8">
         <RecentMatchFeed

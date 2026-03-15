@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPlayerDetail, estimatedLpForMatch } from "@/lib/leaderboard";
 import { getRecentRankEventsForPlayer } from "@/lib/rank-events";
 import { getPlayerBadges, getRoughPatchSummary, BADGE_TOOLTIPS } from "@/lib/player-badges";
+import { getBeastestHolder } from "@/lib/beastest";
 import { SyncButton } from "./sync-button";
 import { LpHistoryChart } from "@/components/lp-history-chart";
 import { RecentRankEvents } from "@/components/recent-rank-events";
@@ -20,14 +21,17 @@ export default async function PlayerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [player, milestones] = await Promise.all([
+  const [player, milestones, beastestHolder] = await Promise.all([
     getPlayerDetail(id),
     getRecentRankEventsForPlayer(id, 15),
+    getBeastestHolder(),
   ]);
   if (!player) notFound();
 
   const rank = player.currentRank;
-  const badges = getPlayerBadges(player.funStats);
+  const badges = getPlayerBadges(player.funStats, player.id, {
+    beastestHolderId: beastestHolder?.id ?? null,
+  });
   const roughPatch = getRoughPatchSummary(player.funStats);
 
   const last10 = player.recentMatches.slice(0, 10);
@@ -52,7 +56,15 @@ export default async function PlayerDetailPage({
             </Badge>
             {badges.length > 0 &&
               badges.map((b) => (
-                <Badge key={b} variant="outline" className="font-normal" title={BADGE_TOOLTIPS[b] ?? ""}>
+                <Badge
+                  key={b}
+                  variant={b === "THE BEASTEST" ? "default" : "outline"}
+                  className={cn(
+                    "font-normal",
+                    b === "THE BEASTEST" && "bg-amber-500/90 text-black hover:bg-amber-500"
+                  )}
+                  title={BADGE_TOOLTIPS[b] ?? ""}
+                >
                   {b}
                 </Badge>
               ))}

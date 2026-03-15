@@ -9,6 +9,7 @@ const nav = [
   { href: "/players", label: "Players" },
   { href: "/duos", label: "Duos" },
   { href: "/recap", label: "Weekly recap" },
+  { href: "/hall-of-fame", label: "Hall of fame" },
   { href: "/hall-of-shame", label: "Hall of shame" },
   { href: "/settings", label: "Settings" },
 ];

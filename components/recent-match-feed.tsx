@@ -20,33 +20,34 @@ function formatRelative(date: Date): string {
 
 function FeedChip({ item }: { item: RecentMatchFeedItem }) {
   return (
-    <Link
-      href={`/matches/${item.matchDbId}`}
-      className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-xs transition-colors hover:bg-muted/50"
-    >
+    <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-xs">
       <Link
         href={`/players/${item.trackedPlayerId}`}
         className="font-medium text-primary hover:underline"
-        onClick={(e) => e.stopPropagation()}
       >
         {item.gameName}
       </Link>
-      <span
-        className={cn(
-          "rounded px-1 py-0.5 text-[10px] font-medium",
-          item.win ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-destructive/20 text-destructive"
-        )}
+      <Link
+        href={`/matches/${item.matchDbId}`}
+        className="flex items-center gap-1.5 transition-colors hover:text-foreground hover:opacity-90"
       >
-        {item.win ? "W" : "L"}
-      </span>
-      <span className="text-muted-foreground">{item.championName ?? "—"}</span>
-      <span className="text-muted-foreground tabular-nums">
-        {item.kills}/{item.deaths}/{item.assists}
-      </span>
-      <span className="text-muted-foreground/80" title={new Date(item.gameStartAt).toLocaleString()}>
-        {formatRelative(item.gameStartAt)}
-      </span>
-    </Link>
+        <span
+          className={cn(
+            "rounded px-1 py-0.5 text-[10px] font-medium",
+            item.win ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-destructive/20 text-destructive"
+          )}
+        >
+          {item.win ? "W" : "L"}
+        </span>
+        <span className="text-muted-foreground">{item.championName ?? "—"}</span>
+        <span className="text-muted-foreground tabular-nums">
+          {item.kills}/{item.deaths}/{item.assists}
+        </span>
+        <span className="text-muted-foreground/80" title={new Date(item.gameStartAt).toLocaleString()}>
+          {formatRelative(item.gameStartAt)}
+        </span>
+      </Link>
+    </div>
   );
 }
 
