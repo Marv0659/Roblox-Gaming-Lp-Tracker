@@ -174,20 +174,28 @@ export default async function AramPage({
       {/* ARAM God title banner */}
       <div
         className={cn(
-          "mb-6 rounded-xl border px-5 py-4",
+          "mb-6 relative overflow-hidden rounded-xl border px-5 py-5 sm:py-6",
           godUnlocked
-            ? "border-yellow-400/40 bg-yellow-400/10"
+            ? "border-yellow-500/50 bg-gradient-to-r from-yellow-500/20 via-yellow-400/10 to-yellow-500/20 shadow-[0_0_30px_-5px_var(--color-yellow-500)]"
             : "border-border bg-muted/20"
         )}
       >
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">
-              {godUnlocked ? "🏆 ARAM God" : "ARAM God Title Progress"}
-            </h2>
-            <p className="text-sm text-muted-foreground">
+        {godUnlocked && (
+          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-yellow-400/20 blur-3xl animate-pulse" />
+        )}
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <h2 className={cn("text-lg font-bold tracking-tight", godUnlocked ? "text-yellow-500 sm:text-2xl" : "text-foreground")}>
+                {godUnlocked ? "👑 ARAM GOD" : "ARAM God Title Progress"}
+              </h2>
+              {godUnlocked && (
+                <Badge className="bg-yellow-500 text-black hover:bg-yellow-400">UNLOCKED</Badge>
+              )}
+            </div>
+            <p className={cn("text-sm", godUnlocked ? "text-yellow-500/80 font-medium" : "text-muted-foreground")}>
               {godUnlocked
-                ? `${player.gameName} has achieved the ARAM God title.`
+                ? `${player.gameName} has achieved the legendary ARAM God title.`
                 : "Reach MASTER in ARAM Authority to unlock the ARAM God title."}
             </p>
           </div>

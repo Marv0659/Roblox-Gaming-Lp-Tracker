@@ -2,13 +2,13 @@
  * ARAM God challenge definitions and progress computation.
  *
  * Challenge IDs sourced from community research (aramgod.com, Riot API responses).
- * The master title "ARAM God" requires MASTER tier in challenge 602001 (ARAM Authority).
+ * The master title "ARAM God" requires MASTER tier in challenge 101000 (ARAM Authority).
  *
  * Structure:
- *   ARAM Authority (602001)  ← meta
- *     ARAM Warrior  (602002) ← sub-group
- *     ARAM Finesse  (602003) ← sub-group
- *     ARAM Champion (602004) ← sub-group
+ *   ARAM Authority (101000)  ← meta
+ *     ARAM Warrior  (101100) ← sub-group
+ *     ARAM Finesse  (101200) ← sub-group
+ *     ARAM Champion (101300) ← sub-group
  *
  * Individual challenges roll up into these groups.
  */
@@ -45,7 +45,7 @@ export interface AramChallengeDefinition {
 export const ARAM_CHALLENGES: AramChallengeDefinition[] = [
   // ── Meta / Group challenges ──────────────────────────────────────────────
   {
-    id: 602001,
+    id: 101000,
     name: "ARAM Authority",
     description:
       "Complete ARAM Warrior, ARAM Finesse, and ARAM Champion challenges to earn the ARAM God title.",
@@ -53,21 +53,21 @@ export const ARAM_CHALLENGES: AramChallengeDefinition[] = [
     thresholds: [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000],
   },
   {
-    id: 602002,
+    id: 101100,
     name: "ARAM Warrior",
     description: "Complete ARAM challenges focused on dealing damage and securing kills.",
     group: "WARRIOR",
     thresholds: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
   },
   {
-    id: 602003,
+    id: 101200,
     name: "ARAM Finesse",
     description: "Complete ARAM challenges focused on skillful play and team utility.",
     group: "FINESSE",
     thresholds: [50, 100, 150, 200, 250, 300, 350, 400, 450, 500],
   },
   {
-    id: 602004,
+    id: 101300,
     name: "ARAM Champion",
     description: "Complete ARAM challenges focused on champion variety and objectives.",
     group: "CHAMPION",
@@ -76,28 +76,28 @@ export const ARAM_CHALLENGES: AramChallengeDefinition[] = [
 
   // ── ARAM Warrior sub-challenges ─────────────────────────────────────────
   {
-    id: 401106,
+    id: 101106,
     name: "ARAM Eradication",
     description: "Get Pentakills in ARAM.",
     group: "WARRIOR",
     thresholds: [1, 2, 5, 10, 15, 25, 40, 60, 80, 100],
   },
   {
-    id: 401101,
+    id: 101104,
     name: "Bad Medicine",
     description: "Kill opponents who recently received a health pack in ARAM.",
     group: "WARRIOR",
     thresholds: [5, 15, 30, 60, 100, 150, 200, 300, 400, 500],
   },
   {
-    id: 401102,
+    id: 101107,
     name: "Farm Champs Not Minions",
-    description: "Get Takedowns in ARAM. Your champion count must be higher than your minion count.",
+    description: "Get Takedowns in ARAM.",
     group: "WARRIOR",
-    thresholds: [10, 30, 60, 100, 150, 200, 350, 500, 700, 1000],
+    thresholds: [100, 500, 1000, 3000, 5000, 10000, 15000, 20000, 30000, 50000],
   },
   {
-    id: 401105,
+    id: 101102,
     name: "Double Decimation",
     description: "Achieve two or more Pentakills in a single ARAM game.",
     group: "WARRIOR",
@@ -106,21 +106,21 @@ export const ARAM_CHALLENGES: AramChallengeDefinition[] = [
 
   // ── ARAM Finesse sub-challenges ─────────────────────────────────────────
   {
-    id: 401103,
+    id: 101105,
     name: "No Hiding",
     description: "Kill enemies who are near one of their own turrets while you have a kill in ARAM.",
     group: "FINESSE",
     thresholds: [5, 15, 30, 60, 100, 150, 200, 300, 400, 500],
   },
   {
-    id: 401104,
+    id: 101108,
     name: "Solo Carry",
     description: "Deal 40% or more of your team's total damage to champions in an ARAM game.",
     group: "FINESSE",
     thresholds: [1, 5, 10, 20, 35, 55, 80, 110, 150, 200],
   },
   {
-    id: 401107,
+    id: 101203,
     name: "Snow Day",
     description: "Hit enemy champions with snowballs in ARAM.",
     group: "FINESSE",
@@ -129,14 +129,14 @@ export const ARAM_CHALLENGES: AramChallengeDefinition[] = [
 
   // ── ARAM Champion sub-challenges ────────────────────────────────────────
   {
-    id: 401108,
+    id: 101303,
     name: "Rapid Demolition",
     description: "Destroy the first enemy turret before 5 minutes in ARAM.",
     group: "CHAMPION",
     thresholds: [1, 3, 6, 12, 20, 30, 45, 65, 90, 120],
   },
   {
-    id: 401109,
+    id: 101301,
     name: "All Random All Champs",
     description: "Earn an S- grade or higher on different champions in ARAM.",
     group: "CHAMPION",
@@ -217,13 +217,13 @@ export function getAramChallengeProgress(
 export function groupAramProgress(progress: AramChallengeProgress[]) {
   return {
     meta: progress.filter((p) => p.definition.group === "meta"),
-    warrior: progress.filter((p) => p.definition.group === "WARRIOR" && p.definition.id !== 602002),
-    finesse: progress.filter((p) => p.definition.group === "FINESSE" && p.definition.id !== 602003),
-    champion: progress.filter((p) => p.definition.group === "CHAMPION" && p.definition.id !== 602004),
-    warriorGroup: progress.find((p) => p.definition.id === 602002) ?? null,
-    finesseGroup: progress.find((p) => p.definition.id === 602003) ?? null,
-    championGroup: progress.find((p) => p.definition.id === 602004) ?? null,
-    authority: progress.find((p) => p.definition.id === 602001) ?? null,
+    warrior: progress.filter((p) => p.definition.group === "WARRIOR" && p.definition.id !== 101100),
+    finesse: progress.filter((p) => p.definition.group === "FINESSE" && p.definition.id !== 101200),
+    champion: progress.filter((p) => p.definition.group === "CHAMPION" && p.definition.id !== 101300),
+    warriorGroup: progress.find((p) => p.definition.id === 101100) ?? null,
+    finesseGroup: progress.find((p) => p.definition.id === 101200) ?? null,
+    championGroup: progress.find((p) => p.definition.id === 101300) ?? null,
+    authority: progress.find((p) => p.definition.id === 101000) ?? null,
   };
 }
 
