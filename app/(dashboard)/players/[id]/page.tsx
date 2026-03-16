@@ -296,7 +296,7 @@ export default async function PlayerDetailPage({
               No matches stored. Sync to fetch recent ranked games.
             </p>
           ) : (
-            <div className="overflow-x-auto -webkit-overflow-scrolling-touch">
+            <div className="overflow-x-auto overflow-y-hidden -webkit-overflow-scrolling-touch">
               <table className="w-full min-w-[520px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground">
