@@ -64,7 +64,7 @@ export default async function RecapPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {recap.biggestLpGainer && (
             <Card>
               <CardHeader className="pb-2">
@@ -274,6 +274,60 @@ export default async function RecapPage() {
                 <Badge variant="secondary" className="font-normal">
                   Yeah mid fed guys...
                 </Badge>
+              </CardContent>
+            </Card>
+          )}
+          {recap.queueRecommendations && recap.queueRecommendations.length > 0 && (
+            <Card className="sm:col-span-2 lg:col-span-3">
+              <CardHeader className="pb-2">
+                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                  Should they queue? (all tracked)
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Light-weight, rule-based recommendations for all tracked players.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="pb-2 pr-4">Player</th>
+                        <th className="pb-2 pr-4">Label</th>
+                        <th className="pb-2 pr-4">Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recap.queueRecommendations
+                        .slice()
+                        .sort((a, b) => b.score - a.score)
+                        .map((r) => (
+                          <tr
+                            key={r.playerId}
+                            className="border-b border-border text-muted-foreground last:border-b-0"
+                          >
+                            <td className="py-2 pr-4">
+                              <PlayerLink
+                                playerId={r.playerId}
+                                gameName={r.gameName}
+                                tagLine={r.tagLine}
+                              />
+                            </td>
+                            <td className="py-2 pr-4">
+                              <span className="font-medium text-foreground">
+                                {r.label === "ONLY_IF_NOT_LOCKING_THAT_CHAMP" && r.badChampionName
+                                  ? `ONLY IF NOT LOCKING ${r.badChampionName}`
+                                  : r.label.replace(/_/g, " ")}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-4">
+                              {Math.round(r.score)} / 100
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
           )}

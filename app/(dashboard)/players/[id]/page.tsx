@@ -5,6 +5,7 @@ import { getRecentRankEventsForPlayer } from "@/lib/rank-events";
 import { getPlayerBadges, getRoughPatchSummary, BADGE_TOOLTIPS } from "@/lib/player-badges";
 import { getBeastestHolder } from "@/lib/beastest";
 import type { ChampionTrustLabel } from "@/lib/champion-trust";
+import { getQueueRecommendationForPlayer } from "@/lib/queue-recommendation";
 import { SyncButton } from "./sync-button";
 import { ViewSwitcher } from "./view-switcher";
 import { LpHistoryChart } from "@/components/lp-history-chart";
@@ -54,6 +55,7 @@ export default async function PlayerDetailPage({
     beastestHolderId: beastestHolder?.id ?? null,
   });
   const roughPatch = getRoughPatchSummary(player.funStats);
+  const queueRecommendation = getQueueRecommendationForPlayer(player);
 
   const last10 = player.recentMatches.slice(0, 10);
   const last20 = player.recentMatches.slice(0, 20);
@@ -184,6 +186,68 @@ export default async function PlayerDetailPage({
                 </dd>
               </div>
             </dl>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mb-8">
+        <Card
+          className={cn(
+            "border-border/60",
+            queueRecommendation.recommendationLabel === "YES" &&
+              "border-emerald-500/40 bg-emerald-500/5",
+            queueRecommendation.recommendationLabel === "ONLY_WITH_SUPERVISION" &&
+              "border-amber-500/40 bg-amber-500/5",
+            queueRecommendation.recommendationLabel === "ONLY_IF_NOT_LOCKING_THAT_CHAMP" &&
+              "border-violet-500/40 bg-violet-500/5",
+            queueRecommendation.recommendationLabel === "NO" &&
+              "border-destructive/40 bg-destructive/5",
+            queueRecommendation.recommendationLabel === "ABSOLUTELY_NOT" &&
+              "border-destructive/70 bg-destructive/10"
+          )}
+        >
+          <CardHeader>
+            <h2 className="text-lg font-semibold">Should you queue?</h2>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-baseline justify-between gap-4">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold tracking-tight">
+                  {queueRecommendation.recommendationLabel === "ONLY_IF_NOT_LOCKING_THAT_CHAMP" &&
+                  queueRecommendation.badChampionName
+                    ? `ONLY IF NOT LOCKING ${queueRecommendation.badChampionName}`
+                    : queueRecommendation.recommendationLabel.replace(/_/g, " ")}
+                </span>
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {Math.round(queueRecommendation.recommendationScore)} / 100
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Confidence: {(queueRecommendation.confidence * 100).toFixed(0)}%
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {queueRecommendation.shortReason}
+            </p>
+            {queueRecommendation.warningTags && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {queueRecommendation.warningTags.map((tag) => (
+                  <Badge key={tag} variant="outline" className="text-[10px] uppercase">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {(queueRecommendation.championWarning || queueRecommendation.queueCurfewWarning) && (
+              <div className="pt-2 text-xs text-muted-foreground space-y-1">
+                {queueRecommendation.championWarning && (
+                  <p>Champion warning: {queueRecommendation.championWarning}</p>
+                )}
+                {queueRecommendation.queueCurfewWarning && (
+                  <p>Curfew hint: {queueRecommendation.queueCurfewWarning}</p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

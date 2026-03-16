@@ -5,6 +5,8 @@
  */
 
 import { prisma } from "@/lib/db";
+import { getQueueRecommendationForPlayer } from "@/lib/queue-recommendation";
+import { getPlayerDetail } from "@/lib/leaderboard";
 
 const SOLO_QUEUE = "RANKED_SOLO_5x5";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -88,6 +90,15 @@ export interface WeeklyRecapData {
   stinkerOfTheWeek: StinkerOfTheWeek;
   /** All per-player stats for the window (for debugging or extra UI). */
   playerStats: PlayerWindowStats[];
+  /** Optional: per-player queue recommendations for dashboard cards. */
+  queueRecommendations?: {
+    playerId: string;
+    gameName: string;
+    tagLine: string;
+    label: string;
+    score: number;
+    badChampionName?: string;
+  }[];
 }
 
 
@@ -416,7 +427,29 @@ function buildRecapFromStats(
 export async function getWeeklyRecap(): Promise<WeeklyRecapData> {
   const window = lastNDays(7);
   const { playerStats, stinkerOfTheWeek } = await getPlayerStatsForWindow(window, SOLO_QUEUE);
-  return buildRecapFromStats(playerStats, window, true, stinkerOfTheWeek);
+  const base = buildRecapFromStats(playerStats, window, true, stinkerOfTheWeek);
+
+  // Optional best-effort queue recommendations for all tracked players in this window.
+  // We reuse PlayerDetail (DB only, no Riot) so we don't duplicate derived logic.
+  const recommendations: WeeklyRecapData["queueRecommendations"] = [];
+  for (const p of playerStats) {
+    const detail = await getPlayerDetail(p.playerId);
+    if (!detail) continue;
+    const rec = getQueueRecommendationForPlayer(detail);
+    recommendations.push({
+      playerId: p.playerId,
+      gameName: p.gameName,
+      tagLine: p.tagLine,
+      label: rec.recommendationLabel,
+      score: rec.recommendationScore,
+      badChampionName: rec.badChampionName,
+    });
+  }
+
+  return {
+    ...base,
+    queueRecommendations: recommendations,
+  };
 }
 
 
