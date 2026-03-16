@@ -9,7 +9,12 @@ const MIN_GAMES_FOR_BEST = 2;
 
 export default async function DuosPage() {
   const duos = await getDuoStats();
-  const bestDuos = duos.filter((d) => d.gamesTogether >= MIN_GAMES_FOR_BEST);
+  const bestDuos = duos
+    .filter((d) => d.gamesTogether >= MIN_GAMES_FOR_BEST)
+    .sort((a, b) => {
+      if (b.winrate !== a.winrate) return b.winrate - a.winrate;
+      return b.gamesTogether - a.gamesTogether;
+    });
 
   return (
     <div className="p-6 md:p-8">

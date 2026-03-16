@@ -84,7 +84,7 @@ export async function getDuoStats(): Promise<DuoPair[]> {
       }
       for (const id of playerIds) {
         if (!playerMap.has(id)) {
-          const p = participants.find((x) => x.trackedPlayer.id === id);
+          const p = participants.find((x: any) => x.trackedPlayer.id === id);
           if (p)
             playerMap.set(id, {
               id: p.trackedPlayer.id,
