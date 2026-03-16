@@ -14,3 +14,20 @@ export function tierColor(tier: string): string {
   };
   return colors[tier] ?? "text-muted-foreground";
 }
+
+/** Tailwind bg color class (semi-transparent) used for decorative glow blobs per tier. */
+export function tierGlowClass(tier: string): string {
+  const glows: Record<string, string> = {
+    IRON: "bg-zinc-500/10",
+    BRONZE: "bg-amber-700/10",
+    SILVER: "bg-zinc-300/10",
+    GOLD: "bg-yellow-500/10",
+    PLATINUM: "bg-sky-400/10",
+    EMERALD: "bg-emerald-500/10",
+    DIAMOND: "bg-cyan-400/10",
+    MASTER: "bg-purple-400/15",
+    GRANDMASTER: "bg-red-400/15",
+    CHALLENGER: "bg-amber-400/20",
+  };
+  return glows[tier] ?? "";
+}

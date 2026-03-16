@@ -135,7 +135,7 @@ export default async function DuosPage() {
                 <h2 className="text-lg font-semibold">All duo pairings</h2>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-hidden">
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="border-b border-border text-muted-foreground">

@@ -32,7 +32,7 @@ export function LeaderboardTable({ entries }: Props) {
       </div>
 
       {/* Desktop: table */}
-      <div className="hidden overflow-x-auto -webkit-overflow-scrolling-touch md:block">
+      <div className="hidden overflow-x-auto overflow-y-hidden -webkit-overflow-scrolling-touch md:block">
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/20 text-xs uppercase tracking-wide text-muted-foreground">

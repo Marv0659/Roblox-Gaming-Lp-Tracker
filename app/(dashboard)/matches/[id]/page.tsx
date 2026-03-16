@@ -49,7 +49,7 @@ export default async function MatchDetailPage({
           <h2 className="text-lg font-semibold">Tracked players in this match</h2>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-hidden">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">

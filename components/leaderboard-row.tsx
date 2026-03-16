@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { LeaderboardEntry } from "@/lib/leaderboard";
-import { tierColor } from "@/lib/tier-colors";
+import { tierColor, tierGlowClass } from "@/lib/tier-colors";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -10,9 +10,19 @@ interface Props {
 }
 
 export function LeaderboardRow({ entry, index }: Props) {
+  const glow = tierGlowClass(entry.tier);
   return (
-    <tr className="border-b border-border transition-colors last:border-b-0 hover:bg-muted/30">
+    <tr className="relative border-b border-border transition-colors last:border-b-0 hover:bg-muted/30">
       <td className="px-2 py-2 text-xs font-medium text-muted-foreground sm:px-4 sm:py-3">
+        {/* Decorative tier glow */}
+        {glow && (
+          <div
+            className={cn(
+              "pointer-events-none absolute -left-6 top-1/2 h-20 w-32 -translate-y-1/2 rounded-full blur-2xl",
+              glow
+            )}
+          />
+        )}
         #{index + 1}
       </td>
       <td className="px-2 py-2 sm:px-4 sm:py-3">
@@ -44,10 +54,19 @@ export function LeaderboardRow({ entry, index }: Props) {
       </td>
       <td className="px-2 py-2 text-sm sm:px-4 sm:py-3" title="Win rate % (wins ÷ total games).">
         {entry.winrate != null ? (
-          <>
+          <span
+            className={cn(
+              "font-medium",
+              entry.winrate >= 55
+                ? "text-emerald-500"
+                : entry.winrate < 45
+                ? "text-destructive"
+                : "text-muted-foreground"
+            )}
+          >
             {entry.winrate.toFixed(1)}
-            <span className="ml-1 text-xs text-muted-foreground">WR</span>
-          </>
+            <span className="ml-1 text-xs opacity-70">WR</span>
+          </span>
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
