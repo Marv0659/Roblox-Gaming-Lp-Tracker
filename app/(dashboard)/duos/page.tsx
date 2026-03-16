@@ -53,47 +53,77 @@ export default async function DuosPage() {
                 </p>
               ) : (
                 <ul className="space-y-3">
-                  {bestDuos.slice(0, 10).map((duo) => (
-                    <li
-                      key={`${duo.playerA.id}-${duo.playerB.id}`}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-4 py-3"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                          href={`/players/${duo.playerA.id}`}
-                          className="font-medium text-foreground hover:text-primary"
-                        >
-                          {duo.playerA.gameName}#{duo.playerA.tagLine}
-                        </Link>
-                        <span className="text-muted-foreground">&</span>
-                        <Link
-                          href={`/players/${duo.playerB.id}`}
-                          className="font-medium text-foreground hover:text-primary"
-                        >
-                          {duo.playerB.gameName}#{duo.playerB.tagLine}
-                        </Link>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="font-normal">
-                          {duo.gamesTogether} games
-                        </Badge>
-                        <span
-                          className={
-                            duo.winrate >= 60
-                              ? "font-semibold text-emerald-500"
-                              : duo.winrate >= 50
-                                ? "font-medium text-foreground"
-                                : "text-muted-foreground"
-                          }
-                        >
-                          {duo.winrate.toFixed(1)}% WR
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {duo.winsTogether}W / {duo.lossesTogether}L
-                        </span>
-                      </div>
-                    </li>
-                  ))}
+                  {bestDuos.slice(0, 10).map((duo) => {
+                    const isHighWr = duo.winrate >= 60;
+                    const isMidWr = duo.winrate >= 50 && duo.winrate < 60;
+
+                    return (
+                      <li
+                        key={`${duo.playerA.id}-${duo.playerB.id}`}
+                        className="relative flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-xl border border-border bg-card px-5 py-4 shadow-sm transition-all hover:shadow-md sm:flex-nowrap"
+                      >
+                        {/* Decorative glow for high WR */}
+                        {isHighWr && (
+                          <>
+                            <div className="absolute -left-8 -top-8 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
+                            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
+                          </>
+                        )}
+
+                        <div className="flex flex-col gap-2 relative z-10 w-full sm:w-auto">
+                          <Link
+                            href={`/players/${duo.playerA.id}`}
+                            className="group flex items-center gap-2"
+                          >
+                            <span className="font-semibold text-foreground transition-colors group-hover:text-primary">
+                              {duo.playerA.gameName}
+                            </span>
+                          </Link>
+                          <Link
+                            href={`/players/${duo.playerB.id}`}
+                            className="group flex items-center gap-2"
+                          >
+                            <span className="font-semibold text-foreground transition-colors group-hover:text-primary">
+                              {duo.playerB.gameName}
+                            </span>
+                          </Link>
+                        </div>
+
+                        <div className="flex items-center gap-6 relative z-10 w-full sm:w-auto sm:justify-end">
+                          <div className="flex flex-col items-start sm:items-end gap-1">
+                            <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                              Record
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="font-normal border-border/60">
+                                {duo.gamesTogether} matches
+                              </Badge>
+                              <span className="text-sm text-muted-foreground font-medium">
+                                {duo.winsTogether}W - {duo.lossesTogether}L
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-0.5 min-w-[4rem]">
+                            <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                              Winrate
+                            </span>
+                            <span
+                              className={`text-2xl font-bold tracking-tighter ${
+                                isHighWr
+                                  ? "text-emerald-500"
+                                  : isMidWr
+                                  ? "text-foreground"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              {duo.winrate.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </CardContent>
