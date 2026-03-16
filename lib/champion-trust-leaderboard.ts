@@ -76,7 +76,7 @@ export async function getGlobalChampionTrustLeaderboards(): Promise<GlobalChampi
   const players = await prisma.trackedPlayer.findMany({
     include: {
       matchParticipants: {
-        include: { match: { select: { gameStartAt: true } } },
+        include: { match: { select: { gameStartAt: true, gameDuration: true } } },
         orderBy: { match: { gameStartAt: "desc" } },
         take: 60,
       },
@@ -94,6 +94,7 @@ export async function getGlobalChampionTrustLeaderboards(): Promise<GlobalChampi
       deaths: m.deaths,
       assists: m.assists,
       gameStartAt: m.match.gameStartAt,
+      gameDuration: m.match.gameDuration,
     }));
     const trustResults = computeChampionTrust(matchInputs);
 

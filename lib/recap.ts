@@ -54,6 +54,26 @@ export interface RoughWeekCandidate {
   reason: string; // short human reason, e.g. "12 games, 25% WR"
 }
 
+/** A single "stinker" game record — worst KDA or most deaths in a game this week. */
+export interface StinkerEntry {
+  playerId: string;
+  gameName: string;
+  tagLine: string;
+  championName: string | null;
+  kills: number;
+  deaths: number;
+  assists: number;
+  kda: number; // (K+A)/max(1,D)
+  matchDbId: string;
+}
+
+/** Stinker of the Week — worst of the week across all players. */
+export interface StinkerOfTheWeek {
+  worstKda: StinkerEntry | null;       // lowest single-game KDA
+  mostDeaths: StinkerEntry | null;     // most deaths in a single game
+}
+
+
 /** Full weekly (or monthly) recap for the UI. */
 export interface WeeklyRecapData {
   window: RecapWindow;
@@ -65,9 +85,11 @@ export interface WeeklyRecapData {
   mostGames: RecapHighlight | null;
   longestWinStreak: RecapHighlight | null;
   roughWeek: RoughWeekCandidate | null;
+  stinkerOfTheWeek: StinkerOfTheWeek;
   /** All per-player stats for the window (for debugging or extra UI). */
   playerStats: PlayerWindowStats[];
 }
+
 
 const MIN_GAMES_FOR_WINRATE = 3;
 
@@ -77,11 +99,11 @@ const MIN_GAMES_FOR_WINRATE = 3;
 async function getPlayerStatsForWindow(
   window: RecapWindow,
   queueType: string = SOLO_QUEUE
-): Promise<PlayerWindowStats[]> {
+): Promise<{ playerStats: PlayerWindowStats[]; stinkerOfTheWeek: StinkerOfTheWeek }> {
   const players = await prisma.trackedPlayer.findMany({
     select: { id: true, gameName: true, tagLine: true },
   });
-  if (players.length === 0) return [];
+  if (players.length === 0) return { playerStats: [], stinkerOfTheWeek: { worstKda: null, mostDeaths: null } };
 
   const playerIds = players.map((p) => p.id);
 
@@ -106,7 +128,11 @@ async function getPlayerStatsForWindow(
           gameStartAt: { gte: window.start, lte: window.end },
         },
       },
-      include: { match: { select: { gameStartAt: true } } },
+      include: {
+        match: {
+          select: { gameStartAt: true, gameDuration: true, id: true },
+        },
+      },
       orderBy: { createdAt: "asc" },
     }),
   ]);
@@ -118,10 +144,22 @@ async function getPlayerStatsForWindow(
     snapshotsByPlayer.set(s.trackedPlayerId, list);
   }
 
-  const matchesByPlayer = new Map<string, { win: boolean; gameStartAt: Date }[]>();
+  const matchesByPlayer = new Map<
+    string,
+    { win: boolean; gameStartAt: Date; kills: number; deaths: number; assists: number; championName: string | null; gameDuration: number; matchDbId: string }[]
+  >();
   for (const p of participants) {
     const list = matchesByPlayer.get(p.trackedPlayerId) ?? [];
-    list.push({ win: p.win, gameStartAt: p.match.gameStartAt });
+    list.push({
+      win: p.win,
+      gameStartAt: p.match.gameStartAt,
+      kills: p.kills,
+      deaths: p.deaths,
+      assists: p.assists,
+      championName: p.championName,
+      gameDuration: p.match.gameDuration,
+      matchDbId: p.match.id,
+    });
     matchesByPlayer.set(p.trackedPlayerId, list);
   }
 
@@ -167,8 +205,61 @@ async function getPlayerStatsForWindow(
     });
   }
 
-  return result;
+  const stinkerOfTheWeek = computeStinker(players, matchesByPlayer);
+
+  return { playerStats: result, stinkerOfTheWeek };
 }
+
+
+/** Compute Stinker of the Week from all participants across all players in window (no remakes). */
+function computeStinker(
+  players: { id: string; gameName: string; tagLine: string }[],
+  matchesByPlayer: Map<
+    string,
+    { kills: number; deaths: number; assists: number; championName: string | null; gameDuration: number; matchDbId: string }[]
+  >
+): StinkerOfTheWeek {
+  let worstKda: StinkerEntry | null = null;
+  let mostDeaths: StinkerEntry | null = null;
+
+  for (const player of players) {
+    const matches = matchesByPlayer.get(player.id) ?? [];
+    for (const m of matches) {
+      if (m.gameDuration < 210) continue; // skip remakes
+      const kda = (m.kills + m.assists) / Math.max(1, m.deaths);
+
+      if (!worstKda || kda < worstKda.kda) {
+        worstKda = {
+          playerId: player.id,
+          gameName: player.gameName,
+          tagLine: player.tagLine,
+          championName: m.championName,
+          kills: m.kills,
+          deaths: m.deaths,
+          assists: m.assists,
+          kda,
+          matchDbId: m.matchDbId,
+        };
+      }
+      if (!mostDeaths || m.deaths > mostDeaths.deaths) {
+        mostDeaths = {
+          playerId: player.id,
+          gameName: player.gameName,
+          tagLine: player.tagLine,
+          championName: m.championName,
+          kills: m.kills,
+          deaths: m.deaths,
+          assists: m.assists,
+          kda,
+          matchDbId: m.matchDbId,
+        };
+      }
+    }
+  }
+
+  return { worstKda, mostDeaths };
+}
+
 
 /**
  * Builds the weekly recap from per-player stats.
@@ -177,8 +268,10 @@ async function getPlayerStatsForWindow(
 function buildRecapFromStats(
   playerStats: PlayerWindowStats[],
   window: RecapWindow,
-  isWeekly: boolean
+  isWeekly: boolean,
+  stinkerOfTheWeek: StinkerOfTheWeek
 ): WeeklyRecapData {
+
   const withLp = playerStats.filter((p) => p.lpChange !== null);
   const withEnoughGames = playerStats.filter(
     (p) => p.gamesPlayed >= MIN_GAMES_FOR_WINRATE && p.winrate !== null
@@ -311,18 +404,21 @@ function buildRecapFromStats(
     mostGames,
     longestWinStreak,
     roughWeek,
+    stinkerOfTheWeek,
     playerStats,
   };
 }
+
 
 /**
  * Returns the weekly recap (last 7 days) from DB data only.
  */
 export async function getWeeklyRecap(): Promise<WeeklyRecapData> {
   const window = lastNDays(7);
-  const playerStats = await getPlayerStatsForWindow(window, SOLO_QUEUE);
-  return buildRecapFromStats(playerStats, window, true);
+  const { playerStats, stinkerOfTheWeek } = await getPlayerStatsForWindow(window, SOLO_QUEUE);
+  return buildRecapFromStats(playerStats, window, true, stinkerOfTheWeek);
 }
+
 
 /**
  * Returns a recap for an arbitrary window (e.g. last 30 days for monthly).
@@ -335,6 +431,7 @@ export async function getRecapForWindow(
   const isWeekly =
     options.isWeekly ??
     (window.end.getTime() - window.start.getTime() <= 8 * MS_PER_DAY);
-  const playerStats = await getPlayerStatsForWindow(window, SOLO_QUEUE);
-  return buildRecapFromStats(playerStats, window, isWeekly);
+  const { playerStats, stinkerOfTheWeek } = await getPlayerStatsForWindow(window, SOLO_QUEUE);
+  return buildRecapFromStats(playerStats, window, isWeekly, stinkerOfTheWeek);
 }
+

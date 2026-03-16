@@ -6,12 +6,12 @@ import { Badge } from "@/components/ui/badge";
 export const dynamic = "force-dynamic";
 
 function formatWindow(window: { start: Date; end: Date }): string {
-  const start = window.start.toLocaleDateString(undefined, {
+  const start = window.start.toLocaleDateString("en-GB", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
-  const end = window.end.toLocaleDateString(undefined, {
+  const end = window.end.toLocaleDateString("en-GB", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -206,6 +206,73 @@ export default async function RecapPage() {
                 </p>
                 <Badge variant="secondary" className="mt-2 font-normal">
                   Played a lot, didn’t go so well
+                </Badge>
+              </CardContent>
+            </Card>
+          )}
+
+          {(recap.stinkerOfTheWeek.worstKda || recap.stinkerOfTheWeek.mostDeaths) && (
+            <Card className="sm:col-span-2 lg:col-span-3 border-rose-500/30 bg-rose-500/5">
+              <CardHeader className="pb-2">
+                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                  💩 Stinker of the Week 💩
+                </h2>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {recap.stinkerOfTheWeek.worstKda && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">Worst KDA in a game</p>
+                    <p className="text-sm">
+                      <PlayerLink
+                        playerId={recap.stinkerOfTheWeek.worstKda.playerId}
+                        gameName={recap.stinkerOfTheWeek.worstKda.gameName}
+                        tagLine={recap.stinkerOfTheWeek.worstKda.tagLine}
+                      />
+                      {recap.stinkerOfTheWeek.worstKda.championName && (
+                        <span className="text-muted-foreground"> on {recap.stinkerOfTheWeek.worstKda.championName}</span>
+                      )}
+                      {" — "}
+                      <Link
+                        href={`/matches/${recap.stinkerOfTheWeek.worstKda.matchDbId}`}
+                        className="font-semibold text-destructive hover:underline"
+                      >
+                        {recap.stinkerOfTheWeek.worstKda.kills}/
+                        {recap.stinkerOfTheWeek.worstKda.deaths}/
+                        {recap.stinkerOfTheWeek.worstKda.assists}
+                        {" "}
+                        ({recap.stinkerOfTheWeek.worstKda.kda.toFixed(2)} KDA)
+                      </Link>
+                    </p>
+                  </div>
+                )}
+                {recap.stinkerOfTheWeek.mostDeaths && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">Most deaths in a game</p>
+                    <p className="text-sm">
+                      <PlayerLink
+                        playerId={recap.stinkerOfTheWeek.mostDeaths.playerId}
+                        gameName={recap.stinkerOfTheWeek.mostDeaths.gameName}
+                        tagLine={recap.stinkerOfTheWeek.mostDeaths.tagLine}
+                      />
+                      {recap.stinkerOfTheWeek.mostDeaths.championName && (
+                        <span className="text-muted-foreground"> on {recap.stinkerOfTheWeek.mostDeaths.championName}</span>
+                      )}
+                      {" — "}
+                      <Link
+                        href={`/matches/${recap.stinkerOfTheWeek.mostDeaths.matchDbId}`}
+                        className="font-semibold text-destructive hover:underline"
+                      >
+                        {recap.stinkerOfTheWeek.mostDeaths.kills}/
+                        {recap.stinkerOfTheWeek.mostDeaths.deaths}/
+                        {recap.stinkerOfTheWeek.mostDeaths.assists}
+                        {" "}
+                        ({recap.stinkerOfTheWeek.mostDeaths.deaths} deaths 💀)
+                      </Link>
+                    </p>
+                  </div>
+                )}
+                <Badge variant="secondary" className="font-normal">
+                  Yeah mid fed guys...
                 </Badge>
               </CardContent>
             </Card>
