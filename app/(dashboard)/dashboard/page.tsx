@@ -26,8 +26,17 @@ export default async function DashboardPage({
     getBeastestHolder(),
   ]);
 
+  const totalPlayers = entries.length;
+  const topEntry = entries[0];
+  const winrateEntries = entries.filter((e) => e.winrate != null);
+  const averageWinrate =
+    winrateEntries.length > 0
+      ? winrateEntries.reduce((sum, e) => sum + (e.winrate ?? 0), 0) / winrateEntries.length
+      : null;
+
   return (
     <div className="relative p-4 sm:p-6 md:p-8">
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-40 max-w-5xl bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_60%)] blur-2xl" />
       <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -39,6 +48,59 @@ export default async function DashboardPage({
         </div>
         <LeaderboardFilters regions={regions} />
       </div>
+
+      {totalPlayers > 0 && (
+        <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <Card className="border-border/60 bg-gradient-to-br from-background via-background to-sky-500/5">
+            <CardContent className="flex items-baseline justify-between gap-2 p-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Tracked players
+                </p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">
+                  {totalPlayers}
+                </p>
+              </div>
+              <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                Private lobby
+              </Badge>
+            </CardContent>
+          </Card>
+
+          {topEntry && (
+            <Card className="border-border/60">
+              <CardContent className="flex flex-col justify-between gap-1 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Current #1
+                </p>
+                <p className="mt-1 truncate text-sm font-semibold">
+                  {topEntry.gameName}
+                  <span className="font-normal text-muted-foreground">
+                    #{topEntry.tagLine}
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {topEntry.tier} {topEntry.rank || ""} · {topEntry.leaguePoints} LP
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="border-border/60">
+            <CardContent className="flex flex-col justify-between gap-1 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Average winrate
+              </p>
+              <p className="mt-1 text-2xl font-semibold">
+                {averageWinrate != null ? `${averageWinrate.toFixed(1)}%` : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Across players with recorded games.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {beastestHolder && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
