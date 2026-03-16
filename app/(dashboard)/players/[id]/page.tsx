@@ -304,9 +304,15 @@ export default async function PlayerDetailPage({
                     <th className="pb-2 pr-2 sm:pr-4">K/D/A</th>
                     <th className="pb-2 pr-2 sm:pr-4">Result</th>
                     <th className="pb-2 pr-2 sm:pr-4" title="LP change: from snapshots (sync before/after match) when available, otherwise estimated.">LP</th>
-                    <th className="pb-2 pr-2 sm:pr-4">CS</th>
-                    <th className="pb-2 pr-2 sm:pr-4">Gold</th>
-                    <th className="pb-2 pr-2 sm:pr-4">Damage</th>
+                    <th className="pb-2 pr-2 sm:pr-4">
+                      CS <span className="text-[11px] font-normal text-muted-foreground">(/m)</span>
+                    </th>
+                    <th className="pb-2 pr-2 sm:pr-4">
+                      Gold <span className="text-[11px] font-normal text-muted-foreground">(/m)</span>
+                    </th>
+                    <th className="pb-2 pr-2 sm:pr-4">
+                      Damage <span className="text-[11px] font-normal text-muted-foreground">(/m)</span>
+                    </th>
                     <th className="pb-2">Date</th>
                   </tr>
                 </thead>
@@ -315,6 +321,7 @@ export default async function PlayerDetailPage({
                     const remake = m.gameDuration < 210;
                     const lp = remake ? 0 : (m.lpChange ?? estimatedLpForMatch(m.win));
                     const isCalculated = m.lpChange !== null;
+                    const mins = Math.max(1, m.gameDuration / 60);
                     return (
                     <tr
                       key={m.id}
@@ -340,10 +347,17 @@ export default async function PlayerDetailPage({
                           {remake ? "±0" : `${lp >= 0 ? "+" : ""}${lp}`}
                         </span>
                       </td>
-                      <td className="py-2 pr-2 sm:pr-4">{m.cs}</td>
-                      <td className="py-2 pr-2 sm:pr-4">{m.gold.toLocaleString()}</td>
+                      <td className="py-2 pr-2 sm:pr-4">
+                        {m.cs}
+                        <span className="ml-1 text-[11px] text-muted-foreground">({(m.cs / mins).toFixed(1)})</span>
+                      </td>
+                      <td className="py-2 pr-2 sm:pr-4">
+                        {m.gold.toLocaleString()}
+                        <span className="ml-1 text-[11px] text-muted-foreground">({(m.gold / mins).toFixed(1)})</span>
+                      </td>
                       <td className="py-2 pr-2 sm:pr-4">
                         {m.damageDealt.toLocaleString()}
+                        <span className="ml-1 text-[11px] text-muted-foreground">({(m.damageDealt / mins).toFixed(1)})</span>
                       </td>
                       <td className="py-2 text-muted-foreground">
                         <Link
