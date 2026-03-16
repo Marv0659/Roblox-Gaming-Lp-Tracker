@@ -11,41 +11,77 @@ import {
   winrateLastN,
 } from "@/lib/derived-stats";
 
-// ------------ Tunable thresholds / weights (easy to tweak) ------------
+// ------------ Tunable thresholds / weights (single source of truth) ------------
 
-const RECENT_GAMES_FOR_FORM = 20;
-const MIN_GAMES_FOR_STRONG_OPINION = 10;
-const MIN_GAMES_FOR_MEDIUM_OPINION = 5;
+export interface QueueRecommendationTuning {
+  recentGamesForForm: number;
+  minGamesForStrongOpinion: number;
+  minGamesForMediumOpinion: number;
 
-const GOOD_WINRATE_LAST20 = 60;
-const BAD_WINRATE_LAST20 = 45;
-const HOT_STREAK_WINS = 4;
-const COLD_STREAK_LOSSES = 4;
+  goodWinrateLast20: number;
+  badWinrateLast20: number;
+  hotStreakWins: number;
+  softTiltLosses: number;
+  hardTiltLosses: number;
 
-const LP_GAIN_GOOD_7D = 40;
-const LP_LOSS_BAD_7D = -30;
+  lpGainGood7d: number;
+  lpLossBad7d: number;
 
-const LATE_NIGHT_START_HOUR = 23; // 23:00
-const LATE_NIGHT_END_HOUR = 5; // 05:00
-const MIN_LATE_NIGHT_GAMES = 8;
-const LATE_NIGHT_PENALTY_THRESHOLD_DIFF = 10; // % WR worse at night
+  lateNightStartHour: number;
+  lateNightEndHour: number;
+  minLateNightGames: number;
+  lateNightPenaltyWinrateDiff: number;
 
-const GRIND_WINDOW_HOURS = 24;
-const GRIND_GAMES_THRESHOLD = 12;
+  grindWindowHours: number;
+  grindGamesThreshold: number;
 
-const TILT_LOSS_STREAK_HARD = 5;
-const TILT_LOSS_STREAK_SOFT = 3;
+  badChampSpamRecentGames: number;
+  minBadChampSpamGames: number;
 
-const BAD_CHAMP_SPAM_RECENT_GAMES = 8;
+  baseScore: number;
+  scoreBonusGoodForm: number;
+  scorePenaltyBadForm: number;
+  scoreBonusHotStreak: number;
+  scorePenaltyTilt: number;
+  scorePenaltyLateNight: number;
+  scorePenaltyGrind: number;
+  scorePenaltyBadChamp: number;
+}
 
-const BASE_SCORE = 50;
-const SCORE_BONUS_GOOD_FORM = 20;
-const SCORE_PENALTY_BAD_FORM = 25;
-const SCORE_BONUS_HOT_STREAK = 10;
-const SCORE_PENALTY_TILT = 25;
-const SCORE_PENALTY_LATE_NIGHT = 15;
-const SCORE_PENALTY_GRIND = 10;
-const SCORE_PENALTY_BAD_CHAMP = 20;
+export const QUEUE_RECOMMENDATION_CONFIG: QueueRecommendationTuning = {
+  recentGamesForForm: 20,
+  minGamesForStrongOpinion: 10,
+  minGamesForMediumOpinion: 5,
+
+  goodWinrateLast20: 60,
+  badWinrateLast20: 45,
+  hotStreakWins: 4,
+  softTiltLosses: 3,
+  hardTiltLosses: 5,
+
+  lpGainGood7d: 40,
+  lpLossBad7d: -30,
+
+  lateNightStartHour: 23,
+  lateNightEndHour: 5,
+  minLateNightGames: 8,
+  lateNightPenaltyWinrateDiff: 10,
+
+  grindWindowHours: 24,
+  grindGamesThreshold: 12,
+
+  badChampSpamRecentGames: 8,
+  minBadChampSpamGames: 3,
+
+  baseScore: 50,
+  scoreBonusGoodForm: 20,
+  scorePenaltyBadForm: 25,
+  scoreBonusHotStreak: 10,
+  scorePenaltyTilt: 25,
+  scorePenaltyLateNight: 15,
+  scorePenaltyGrind: 10,
+  scorePenaltyBadChamp: 20,
+};
 
 // ----------------------------------------------------------------------
 
@@ -91,8 +127,8 @@ export interface QueueRecommendationConfig {
 }
 
 export const DEFAULT_QUEUE_RECOMMENDATION_CONFIG: QueueRecommendationConfig = {
-  lateNightStartHour: LATE_NIGHT_START_HOUR,
-  lateNightEndHour: LATE_NIGHT_END_HOUR,
+  lateNightStartHour: QUEUE_RECOMMENDATION_CONFIG.lateNightStartHour,
+  lateNightEndHour: QUEUE_RECOMMENDATION_CONFIG.lateNightEndHour,
 };
 
 function toMatchInputFromRecent(
@@ -149,10 +185,11 @@ function computeLateNightPattern(
     nonLateGames > 0 ? (wins(nonLateMatches) / nonLateGames) * 100 : null;
 
   const hasPattern =
-    lateGames >= MIN_LATE_NIGHT_GAMES &&
+    lateGames >= QUEUE_RECOMMENDATION_CONFIG.minLateNightGames &&
     nonLateWinrate !== null &&
     lateNightWinrate !== null &&
-    nonLateWinrate - lateNightWinrate >= LATE_NIGHT_PENALTY_THRESHOLD_DIFF;
+    nonLateWinrate - lateNightWinrate >=
+      QUEUE_RECOMMENDATION_CONFIG.lateNightPenaltyWinrateDiff;
 
   return { hasPattern, lateNightWinrate, nonLateWinrate };
 }
@@ -161,13 +198,15 @@ function computeGrindStats(
   matches: MatchParticipantInput[],
   now: Date
 ): { recentGames24h: number; isGrinding: boolean } {
-  const cutoff = new Date(now.getTime() - GRIND_WINDOW_HOURS * 60 * 60 * 1000);
+  const cutoff = new Date(
+    now.getTime() - QUEUE_RECOMMENDATION_CONFIG.grindWindowHours * 60 * 60 * 1000
+  );
   const recent = matches.filter(
     (m) => m.gameStartAt.getTime() >= cutoff.getTime()
   );
   return {
     recentGames24h: recent.length,
-    isGrinding: recent.length >= GRIND_GAMES_THRESHOLD,
+    isGrinding: recent.length >= QUEUE_RECOMMENDATION_CONFIG.grindGamesThreshold,
   };
 }
 
@@ -183,7 +222,10 @@ function findBadChampionSpam(
   const badChamps = championTrust.filter((c) => badLabels.has(c.trustLabel));
   if (badChamps.length === 0) return { hasBadSpam: false };
 
-  const recent = matches.slice(0, BAD_CHAMP_SPAM_RECENT_GAMES);
+  const recent = matches.slice(
+    0,
+    QUEUE_RECOMMENDATION_CONFIG.badChampSpamRecentGames
+  );
   const nameCounts = new Map<string, number>();
   for (const m of recent) {
     const name = m.championName;
@@ -201,7 +243,11 @@ function findBadChampionSpam(
     }
   }
 
-  if (!worstName || worstCount < 3) return { hasBadSpam: false };
+  if (
+    !worstName ||
+    worstCount < QUEUE_RECOMMENDATION_CONFIG.minBadChampSpamGames
+  )
+    return { hasBadSpam: false };
 
   const meta = badChamps.find((c) => c.championName === worstName);
   const label = meta?.trustLabel ?? "DO_NOT_ALLOW";
@@ -263,14 +309,14 @@ function shortReasonFromFactors(
 ): string {
   if (label === "YES") {
     const wr20 = funStats.winrateLast20;
-    if (wr20 != null && wr20 >= GOOD_WINRATE_LAST20) {
+    if (wr20 != null && wr20 >= QUEUE_RECOMMENDATION_CONFIG.goodWinrateLast20) {
       return `Won ${wr20.toFixed(0)}% of last 20 and gaining LP`;
     }
     return "Recent form is solid and LP trend is up";
   }
 
   if (label === "ABSOLUTELY_NOT") {
-    if (tiltInfo.lossStreak >= TILT_LOSS_STREAK_HARD) {
+    if (tiltInfo.lossStreak >= QUEUE_RECOMMENDATION_CONFIG.hardTiltLosses) {
       return `On a ${tiltInfo.lossStreak}-game loss streak after midnight`;
     }
     return "Late-night + hard tilt detected — statistically unsafe to queue";
@@ -281,10 +327,10 @@ function shortReasonFromFactors(
   }
 
   if (label === "NO") {
-    if (tiltInfo.lossStreak >= TILT_LOSS_STREAK_SOFT) {
+    if (tiltInfo.lossStreak >= QUEUE_RECOMMENDATION_CONFIG.softTiltLosses) {
       return `Recent form is bad and you are on a ${tiltInfo.lossStreak}-game loss streak`;
     }
-    if (tiltInfo.lp7d <= LP_LOSS_BAD_7D) {
+    if (tiltInfo.lp7d <= QUEUE_RECOMMENDATION_CONFIG.lpLossBad7d) {
       return `${tiltInfo.lp7d} LP over the last 7 days — maybe touch grass first`;
     }
     return "Recent form is poor and LP trend is down";
@@ -309,22 +355,28 @@ export function getQueueRecommendationForPlayer(
   const factors: QueueRecommendationFactor[] = [];
   const warningTags: string[] = [];
 
-  let score = BASE_SCORE;
+  let score = QUEUE_RECOMMENDATION_CONFIG.baseScore;
 
   const last5Winrate = winrateLastN(matches, 5);
   const last10Winrate = winrateLastN(matches, 10);
-  const last20Winrate = winrateLastN(matches, RECENT_GAMES_FOR_FORM);
+  const last20Winrate = winrateLastN(
+    matches,
+    QUEUE_RECOMMENDATION_CONFIG.recentGamesForForm
+  );
 
-  if (last20Winrate != null && totalGames >= MIN_GAMES_FOR_STRONG_OPINION) {
-    if (last20Winrate >= GOOD_WINRATE_LAST20) {
-      score += SCORE_BONUS_GOOD_FORM;
+  if (
+    last20Winrate != null &&
+    totalGames >= QUEUE_RECOMMENDATION_CONFIG.minGamesForStrongOpinion
+  ) {
+    if (last20Winrate >= QUEUE_RECOMMENDATION_CONFIG.goodWinrateLast20) {
+      score += QUEUE_RECOMMENDATION_CONFIG.scoreBonusGoodForm;
       factors.push({
         type: "recent_form",
         label: `Hot recent form (${last20Winrate.toFixed(0)}% over last 20)`,
         impact: "positive",
       });
-    } else if (last20Winrate <= BAD_WINRATE_LAST20) {
-      score -= SCORE_PENALTY_BAD_FORM;
+    } else if (last20Winrate <= QUEUE_RECOMMENDATION_CONFIG.badWinrateLast20) {
+      score -= QUEUE_RECOMMENDATION_CONFIG.scorePenaltyBadForm;
       factors.push({
         type: "recent_form",
         label: `Cold recent form (${last20Winrate.toFixed(0)}% over last 20)`,
@@ -334,8 +386,8 @@ export function getQueueRecommendationForPlayer(
   }
 
   const fun = player.funStats;
-  if (fun.currentWinStreak >= HOT_STREAK_WINS) {
-    score += SCORE_BONUS_HOT_STREAK;
+  if (fun.currentWinStreak >= QUEUE_RECOMMENDATION_CONFIG.hotStreakWins) {
+    score += QUEUE_RECOMMENDATION_CONFIG.scoreBonusHotStreak;
     factors.push({
       type: "streak",
       label: `On a W${fun.currentWinStreak} streak`,
@@ -343,10 +395,12 @@ export function getQueueRecommendationForPlayer(
     });
   }
 
-  const isTiltHard = fun.currentLossStreak >= TILT_LOSS_STREAK_HARD;
-  const isTiltSoft = fun.currentLossStreak >= TILT_LOSS_STREAK_SOFT;
+  const isTiltHard =
+    fun.currentLossStreak >= QUEUE_RECOMMENDATION_CONFIG.hardTiltLosses;
+  const isTiltSoft =
+    fun.currentLossStreak >= QUEUE_RECOMMENDATION_CONFIG.softTiltLosses;
   if (isTiltSoft) {
-    score -= SCORE_PENALTY_TILT;
+    score -= QUEUE_RECOMMENDATION_CONFIG.scorePenaltyTilt;
     factors.push({
       type: "streak",
       label: `On a L${fun.currentLossStreak} streak`,
@@ -355,13 +409,13 @@ export function getQueueRecommendationForPlayer(
     warningTags.push("Tilt detected");
   }
 
-  if (fun.lpGained7d >= LP_GAIN_GOOD_7D) {
+  if (fun.lpGained7d >= QUEUE_RECOMMENDATION_CONFIG.lpGainGood7d) {
     factors.push({
       type: "lp_trend",
       label: `Gained ${fun.lpGained7d} LP in last 7 days`,
       impact: "positive",
     });
-  } else if (fun.lpGained7d <= LP_LOSS_BAD_7D) {
+  } else if (fun.lpGained7d <= QUEUE_RECOMMENDATION_CONFIG.lpLossBad7d) {
     score -= 10;
     factors.push({
       type: "lp_trend",
@@ -374,7 +428,7 @@ export function getQueueRecommendationForPlayer(
   const isLateNightNow = isLateNight(now, config);
   let queueCurfewWarning: string | undefined;
   if (lateNightPattern.hasPattern && isLateNightNow) {
-    score -= SCORE_PENALTY_LATE_NIGHT;
+    score -= QUEUE_RECOMMENDATION_CONFIG.scorePenaltyLateNight;
     warningTags.push("Late-night danger");
     queueCurfewWarning = "You are statistically a public risk after 23:30";
     factors.push({
@@ -386,7 +440,7 @@ export function getQueueRecommendationForPlayer(
 
   const grindStats = computeGrindStats(matches, now);
   if (grindStats.isGrinding) {
-    score -= SCORE_PENALTY_GRIND;
+    score -= QUEUE_RECOMMENDATION_CONFIG.scorePenaltyGrind;
     warningTags.push("Grinding too many games");
     factors.push({
       type: "grind",
@@ -402,7 +456,7 @@ export function getQueueRecommendationForPlayer(
   let championWarning: string | undefined;
   let badChampionName: string | undefined;
   if (badChampSpam.hasBadSpam && badChampSpam.warning) {
-    score -= SCORE_PENALTY_BAD_CHAMP;
+    score -= QUEUE_RECOMMENDATION_CONFIG.scorePenaltyBadChamp;
     championWarning = badChampSpam.warning;
     badChampionName = badChampSpam.championName;
     warningTags.push("Fake comfort pick risk");
@@ -413,7 +467,7 @@ export function getQueueRecommendationForPlayer(
     });
   }
 
-  if (totalGames < MIN_GAMES_FOR_MEDIUM_OPINION) {
+  if (totalGames < QUEUE_RECOMMENDATION_CONFIG.minGamesForMediumOpinion) {
     factors.push({
       type: "sample_size",
       label: "Very low sample size — recommendation is gentle",
