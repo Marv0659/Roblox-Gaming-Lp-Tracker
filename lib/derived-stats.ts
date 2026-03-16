@@ -19,7 +19,10 @@ export interface MatchParticipantInput {
   deaths: number;
   assists: number;
   gameStartAt: Date;
+  /** Game duration in seconds. Used to detect remakes (< REMAKE_THRESHOLD_SECONDS). */
+  gameDuration: number;
 }
+
 
 export interface DerivedStatsInput {
   rankSnapshots: RankSnapshotInput[];
@@ -53,6 +56,23 @@ export interface DerivedPlayerStats {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export const DEFAULT_MIN_GAMES_CHAMPION_WINRATE = 3;
+
+/**
+ * Games shorter than this (in seconds) are remakes.
+ * Riot does not award LP and stats are meaningless.
+ */
+export const REMAKE_THRESHOLD_SECONDS = 210;
+
+/** Returns true if a match should be treated as a remake. */
+export function isRemake(match: Pick<MatchParticipantInput, "gameDuration">): boolean {
+  return match.gameDuration < REMAKE_THRESHOLD_SECONDS;
+}
+
+/** Filters out remake games from a match list. */
+export function withoutRemakes(matches: MatchParticipantInput[]): MatchParticipantInput[] {
+  return matches.filter((m) => !isRemake(m));
+}
+
 
 /** Date N days ago from now. */
 export function daysAgo(days: number): Date {
@@ -268,13 +288,15 @@ export function computeDerivedPlayerStats(
     since30d
   );
 
-  const winrateLast10 = winrateLastN(input.matches, 10);
-  const winrateLast20 = winrateLastN(input.matches, 20);
+  const matches = withoutRemakes(input.matches);
 
-  const winStreak = currentWinStreak(input.matches);
-  const lossStreak = currentLossStreak(input.matches);
+  const winrateLast10 = winrateLastN(matches, 10);
+  const winrateLast20 = winrateLastN(matches, 20);
 
-  const champStats = computeChampionStats(input.matches);
+  const winStreak = currentWinStreak(matches);
+  const lossStreak = currentLossStreak(matches);
+
+  const champStats = computeChampionStats(matches);
   const mostPlayedChampion = getMostPlayedChampion(champStats);
   const bestChampionByWinrate = getBestChampionByWinrate(
     champStats,
@@ -285,8 +307,8 @@ export function computeDerivedPlayerStats(
     minGamesChampionWinrate
   );
 
-  const totalGamesLast7d = totalGamesInWindow(input.matches, since7d);
-  const avgKda = averageKda(input.matches, kdaGameCount);
+  const totalGamesLast7d = totalGamesInWindow(matches, since7d);
+  const avgKda = averageKda(matches, kdaGameCount);
 
   return {
     lpGained7d,

@@ -26,6 +26,7 @@ export default async function MatchDetailPage({
 
   const durationMin = Math.floor(match.gameDuration / 60);
   const durationSec = match.gameDuration % 60;
+  const isRematch = match.gameDuration < 210;
 
   return (
     <div className="p-6 md:p-8">
@@ -83,11 +84,13 @@ export default async function MatchDetailPage({
                       {p.kills}/{p.deaths}/{p.assists}
                     </td>
                     <td className="py-2 pr-4">
-                      <span
-                        className={p.win ? "text-emerald-500" : "text-destructive"}
-                      >
-                        {p.win ? "Win" : "Loss"}
-                      </span>
+                      {isRematch ? (
+                        <span className="text-muted-foreground">Remake</span>
+                      ) : (
+                        <span className={p.win ? "text-emerald-500" : "text-destructive"}>
+                          {p.win ? "Win" : "Loss"}
+                        </span>
+                      )}
                     </td>
                     <td className="py-2 pr-4">{p.cs}</td>
                     <td className="py-2 pr-4">{p.gold.toLocaleString()}</td>

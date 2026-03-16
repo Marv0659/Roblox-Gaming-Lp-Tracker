@@ -240,7 +240,7 @@ export async function getHallOfFame(): Promise<HallOfFameResult> {
         take: 100,
       },
       matchParticipants: {
-        include: { match: { select: { gameStartAt: true } } },
+        include: { match: { select: { gameStartAt: true, gameDuration: true } } },
         orderBy: { createdAt: "desc" },
         take: 100,
       },
@@ -263,6 +263,7 @@ export async function getHallOfFame(): Promise<HallOfFameResult> {
       deaths: m.deaths,
       assists: m.assists,
       gameStartAt: m.match.gameStartAt,
+      gameDuration: m.match.gameDuration,
     })),
   }));
 

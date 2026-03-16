@@ -11,9 +11,11 @@ import {
   winrateLastN,
   computeChampionStats,
   totalGamesInWindow,
+  withoutRemakes,
   type RankSnapshotInput,
   type MatchParticipantInput,
 } from "@/lib/derived-stats";
+
 
 const SOLO_QUEUE = "RANKED_SOLO_5x5";
 
@@ -162,6 +164,9 @@ export function computeHallOfShame(
       tagLine: p.tagLine,
     };
 
+    // Exclude remakes from all shame stats
+    const matches = withoutRemakes(p.matches);
+
     const lpChange7d = lpGainedInWindow(p.rankSnapshots, SOLO_QUEUE, since7d);
     if (lpChange7d < 0) {
       const snapshotsInWindow = p.rankSnapshots.filter(
@@ -177,18 +182,18 @@ export function computeHallOfShame(
       }
     }
 
-    const wrRecent = winrateLastN(p.matches, RECENT_GAMES_N);
-    if (wrRecent !== null && p.matches.length >= MIN_GAMES_FOR_WINRATE_OR_DEATHS) {
+    const wrRecent = winrateLastN(matches, RECENT_GAMES_N);
+    if (wrRecent !== null && matches.length >= MIN_GAMES_FOR_WINRATE_OR_DEATHS) {
       worstRecentWinrate.push({
         player: playerRef,
         value: wrRecent,
         label: `${wrRecent.toFixed(1)}% WR`,
-        detail: `last ${Math.min(RECENT_GAMES_N, p.matches.length)} games`,
+        detail: `last ${Math.min(RECENT_GAMES_N, matches.length)} games`,
       });
     }
 
     const avgDeaths = averageDeathsLastN(
-      p.matches,
+      matches,
       RECENT_GAMES_N,
       MIN_GAMES_FOR_WINRATE_OR_DEATHS
     );
@@ -197,12 +202,12 @@ export function computeHallOfShame(
         player: playerRef,
         value: avgDeaths,
         label: `${avgDeaths.toFixed(1)} deaths/game`,
-        detail: `last ${Math.min(RECENT_GAMES_N, p.matches.length)} games`,
+        detail: `last ${Math.min(RECENT_GAMES_N, matches.length)} games`,
       });
     }
 
-    const games7d = totalGamesInWindow(p.matches, since7d);
-    const wr7d = winrateInWindow(p.matches, since7d);
+    const games7d = totalGamesInWindow(matches, since7d);
+    const wr7d = winrateInWindow(matches, since7d);
     if (
       games7d >= MIN_GAMES_FOR_SPAM &&
       wr7d !== null &&
@@ -227,7 +232,7 @@ export function computeHallOfShame(
     }
 
     const stubborn = worstChampionStubbornness(
-      p.matches,
+      matches,
       MIN_GAMES_FOR_STUBBORN_CHAMP,
       CHAMP_WINRATE_STUBBORN_THRESHOLD
     );
@@ -272,7 +277,7 @@ export async function getHallOfShame(): Promise<HallOfShameResult> {
         take: 100,
       },
       matchParticipants: {
-        include: { match: { select: { gameStartAt: true } } },
+        include: { match: { select: { gameStartAt: true, gameDuration: true } } },
         orderBy: { createdAt: "desc" },
         take: 100,
       },
@@ -295,6 +300,7 @@ export async function getHallOfShame(): Promise<HallOfShameResult> {
       deaths: m.deaths,
       assists: m.assists,
       gameStartAt: m.match.gameStartAt,
+      gameDuration: m.match.gameDuration,
     })),
   }));
 

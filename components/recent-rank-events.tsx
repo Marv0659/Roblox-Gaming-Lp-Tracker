@@ -76,10 +76,10 @@ function EventChip({
       <span className={cn("font-medium", tierColor(e.tierAfter))}>
         {e.tierAfter} {e.rankAfter} {e.leaguePointsAfter} LP
       </span>
-      <span className="text-xs text-muted-foreground">
+      <span suppressHydrationWarning className="text-xs text-muted-foreground">
         {typeof e.createdAt === "string"
-          ? new Date(e.createdAt).toLocaleDateString()
-          : e.createdAt.toLocaleDateString()}
+          ? new Date(e.createdAt).toLocaleDateString("en-GB")
+          : e.createdAt.toLocaleDateString("en-GB")}
       </span>
     </span>
   );

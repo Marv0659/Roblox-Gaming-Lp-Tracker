@@ -312,7 +312,8 @@ export default async function PlayerDetailPage({
                 </thead>
                 <tbody>
                   {player.recentMatches.map((m) => {
-                    const lp = m.lpChange ?? estimatedLpForMatch(m.win);
+                    const remake = m.gameDuration < 210;
+                    const lp = remake ? 0 : (m.lpChange ?? estimatedLpForMatch(m.win));
                     const isCalculated = m.lpChange !== null;
                     return (
                     <tr
@@ -326,17 +327,17 @@ export default async function PlayerDetailPage({
                         {m.kills}/{m.deaths}/{m.assists}
                       </td>
                       <td className="py-2 pr-2 sm:pr-4">
-                        <span
-                          className={
-                            m.win ? "text-emerald-500" : "text-destructive"
-                          }
-                        >
-                          {m.win ? "Win" : "Loss"}
-                        </span>
+                        {remake ? (
+                          <span className="text-muted-foreground">Remake</span>
+                        ) : (
+                          <span className={m.win ? "text-emerald-500" : "text-destructive"}>
+                            {m.win ? "Win" : "Loss"}
+                          </span>
+                        )}
                       </td>
                       <td className="py-2 pr-2 sm:pr-4" title={isCalculated ? "From rank snapshots (sync before and after this match)." : "Estimated (no snapshots bracketing this match; typical +24 win, -18 loss)."}>
-                        <span className={lp >= 0 ? "text-emerald-500 font-medium" : "text-destructive font-medium"}>
-                          {lp >= 0 ? "+" : ""}{lp}
+                        <span className={remake ? "text-muted-foreground font-medium" : (lp >= 0 ? "text-emerald-500 font-medium" : "text-destructive font-medium")}>
+                          {remake ? "±0" : `${lp >= 0 ? "+" : ""}${lp}`}
                         </span>
                       </td>
                       <td className="py-2 pr-2 sm:pr-4">{m.cs}</td>

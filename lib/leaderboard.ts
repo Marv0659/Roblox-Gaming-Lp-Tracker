@@ -138,6 +138,7 @@ export interface RecentMatchFeedItem {
   matchDbId: string;
 }
 
+
 /** Recent wins/losses across all tracked players for dashboard live feed. */
 export async function getRecentMatchFeed(
   limit: number = 20
@@ -400,6 +401,7 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
         deaths: m.deaths,
         assists: m.assists,
         gameStartAt: m.match.gameStartAt,
+        gameDuration: m.match.gameDuration,
       })),
     },
     { queueType: SOLO_QUEUE }
@@ -418,6 +420,7 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
     deaths: m.deaths,
     assists: m.assists,
     gameStartAt: m.match.gameStartAt,
+    gameDuration: m.match.gameDuration,
   }));
   const championTrust = computeChampionTrust(matchInputs);
 

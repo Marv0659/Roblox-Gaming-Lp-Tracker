@@ -15,7 +15,7 @@ function formatRelative(date: Date): string {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 function FeedChip({ item }: { item: RecentMatchFeedItem }) {
@@ -34,16 +34,20 @@ function FeedChip({ item }: { item: RecentMatchFeedItem }) {
         <span
           className={cn(
             "rounded px-1 py-0.5 text-[10px] font-medium",
-            item.win ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-destructive/20 text-destructive"
+            item.gameDuration < 210
+              ? "bg-muted text-muted-foreground"
+              : item.win
+              ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+              : "bg-destructive/20 text-destructive"
           )}
         >
-          {item.win ? "W" : "L"}
+          {item.gameDuration < 210 ? "R" : item.win ? "W" : "L"}
         </span>
         <span className="text-muted-foreground">{item.championName ?? "—"}</span>
         <span className="text-muted-foreground tabular-nums">
           {item.kills}/{item.deaths}/{item.assists}
         </span>
-        <span className="text-muted-foreground/80" title={new Date(item.gameStartAt).toLocaleString()}>
+        <span suppressHydrationWarning className="text-muted-foreground/80" title={new Date(item.gameStartAt).toLocaleString()}>
           {formatRelative(item.gameStartAt)}
         </span>
       </Link>

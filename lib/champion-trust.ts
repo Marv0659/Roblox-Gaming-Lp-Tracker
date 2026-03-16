@@ -4,6 +4,8 @@
  */
 
 import type { MatchParticipantInput } from "@/lib/derived-stats";
+import { withoutRemakes } from "@/lib/derived-stats";
+
 
 // ------------ Tunable thresholds (easy to tweak) ------------
 const MIN_GAMES_TO_SHOW = 3; // Below this we omit the champion from results
@@ -124,7 +126,9 @@ function sampleQuality(games: number): SampleQuality {
 export function computeChampionTrust(
   matches: MatchParticipantInput[]
 ): ChampionTrustResult[] {
-  const stats = buildPerChampionStats(matches);
+  // Exclude remakes — they contribute no meaningful wins/losses/stats
+  const validMatches = withoutRemakes(matches);
+  const stats = buildPerChampionStats(validMatches);
   const sortedByGames = [...stats.entries()].sort(
     (a, b) => b[1].games - a[1].games
   );
