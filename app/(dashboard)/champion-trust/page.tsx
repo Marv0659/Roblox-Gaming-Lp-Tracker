@@ -31,7 +31,7 @@ function TrustRow({ row }: { row: GlobalChampionTrustRow }) {
   return (
     <Link
       href={`/players/${row.playerId}`}
-      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm transition-colors hover:bg-muted/40"
+      className="flex flex-col gap-1 rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <span className="font-medium text-foreground">
@@ -41,7 +41,7 @@ function TrustRow({ row }: { row: GlobalChampionTrustRow }) {
         <span className="font-medium text-foreground">{row.championName}</span>
         <ChampionTrustBadge label={row.trustLabel} />
       </div>
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-2 text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
         <span className="tabular-nums">{row.games} games</span>
         <span>{row.winrate.toFixed(0)}% WR</span>
         <span className="text-xs">{row.shortReason}</span>
