@@ -432,8 +432,15 @@ export async function getWeeklyRecap(): Promise<WeeklyRecapData> {
   // Optional best-effort queue recommendations for all tracked players in this window.
   // We reuse PlayerDetail (DB only, no Riot) so we don't duplicate derived logic.
   const recommendations: WeeklyRecapData["queueRecommendations"] = [];
-  for (const p of playerStats) {
-    const detail = await getPlayerDetail(p.playerId);
+  
+  // Fetch all player details in parallel to avoid N+1 query waterfall
+  const details = await Promise.all(
+    playerStats.map((p) => getPlayerDetail(p.playerId))
+  );
+
+  for (let i = 0; i < playerStats.length; i++) {
+    const p = playerStats[i];
+    const detail = details[i];
     if (!detail) continue;
     const rec = getQueueRecommendationForPlayer(detail);
     recommendations.push({
