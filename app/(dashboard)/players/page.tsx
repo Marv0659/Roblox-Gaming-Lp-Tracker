@@ -24,7 +24,7 @@ export default async function PlayersPage() {
             Add by Riot ID (gameName#tagLine) and region.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-end gap-3">
           {players.length > 0 && <SyncAllButton />}
           <AddPlayerForm />
         </div>
