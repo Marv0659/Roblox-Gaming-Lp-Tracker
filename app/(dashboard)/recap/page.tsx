@@ -66,7 +66,7 @@ export default async function RecapPage() {
       ) : (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {recap.biggestLpGainer && (
-            <Card>
+            <Card className="order-1 lg:order-1">
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                   Biggest LP gainer
@@ -86,7 +86,7 @@ export default async function RecapPage() {
           )}
 
           {recap.biggestLpLoser && (
-            <Card>
+            <Card className="order-2 lg:order-2">
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                   Biggest LP loser
@@ -106,7 +106,7 @@ export default async function RecapPage() {
           )}
 
           {recap.bestWinrate && (
-            <Card>
+            <Card className="order-3 lg:order-4">
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                   Best winrate this week
@@ -126,7 +126,7 @@ export default async function RecapPage() {
           )}
 
           {recap.worstWinrate && (
-            <Card>
+            <Card className="order-4 lg:order-5">
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                   Worst winrate this week
@@ -146,7 +146,7 @@ export default async function RecapPage() {
           )}
 
           {recap.mostGames && (
-            <Card>
+            <Card className="order-5 lg:order-3">
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                   Most games played
@@ -166,7 +166,7 @@ export default async function RecapPage() {
           )}
 
           {recap.longestWinStreak && (
-            <Card>
+            <Card className="order-6 lg:order-6">
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                   Longest win streak
@@ -186,7 +186,7 @@ export default async function RecapPage() {
           )}
 
           {recap.roughWeek && (
-            <Card className="sm:col-span-2 lg:col-span-3 border-amber-500/30 bg-amber-500/5">
+            <Card className="order-7 sm:col-span-2 lg:col-span-3 border-amber-500/30 bg-amber-500/5">
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                   Rough week candidate
@@ -212,7 +212,7 @@ export default async function RecapPage() {
           )}
 
           {(recap.stinkerOfTheWeek.worstKda || recap.stinkerOfTheWeek.mostDeaths) && (
-            <Card className="sm:col-span-2 lg:col-span-3 border-rose-500/30 bg-rose-500/5">
+            <Card className="order-8 sm:col-span-2 lg:col-span-3 border-rose-500/30 bg-rose-500/5">
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                   💩 Stinker of the Week 💩
@@ -278,7 +278,7 @@ export default async function RecapPage() {
             </Card>
           )}
           {recap.queueRecommendations && recap.queueRecommendations.length > 0 && (
-            <Card className="sm:col-span-2 lg:col-span-3">
+            <Card className="order-9 sm:col-span-2 lg:col-span-3">
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                   Should they queue? (all tracked)
