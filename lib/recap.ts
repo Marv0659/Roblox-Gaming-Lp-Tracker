@@ -102,7 +102,7 @@ export interface WeeklyRecapData {
 }
 
 
-const MIN_GAMES_FOR_WINRATE = 3;
+const MIN_GAMES_FOR_WINRATE = 6;
 
 /**
  * Fetches per-player stats for the given window from DB (no Riot calls).
