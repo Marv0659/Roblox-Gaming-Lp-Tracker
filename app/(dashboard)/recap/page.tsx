@@ -43,6 +43,11 @@ function PlayerLink({
 export default async function RecapPage() {
   const recap = await getWeeklyRecap();
 
+  const topGrinders = [...recap.playerStats]
+    .filter((p) => p.gamesPlayed > 0)
+    .sort((a, b) => b.gamesPlayed - a.gamesPlayed)
+    .slice(0, 5);
+
   return (
     <div className="p-6 md:p-8">
       <div className="mb-8">
@@ -191,98 +196,139 @@ export default async function RecapPage() {
             </Card>
           )}
 
-          {recap.roughWeek && (
-            <Card className="order-7 sm:col-span-2 lg:col-span-3 border-amber-500/30 bg-amber-500/5">
+          {(recap.roughWeek || recap.stinkerOfTheWeek.worstKda || recap.stinkerOfTheWeek.mostDeaths) && (
+            <div className="order-7 sm:col-span-2 lg:col-span-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {recap.roughWeek && (
+                <Card className="flex h-full flex-col border-amber-500/30 bg-amber-500/5">
+                  <CardHeader className="pb-2">
+                    <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                      Rough week candidate
+                    </h2>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col items-start">
+                    <PlayerLink
+                      playerId={recap.roughWeek.playerId}
+                      gameName={recap.roughWeek.gameName}
+                      tagLine={recap.roughWeek.tagLine}
+                    />
+                    <p className="mt-1 text-muted-foreground">
+                      {recap.roughWeek.reason}
+                      {recap.roughWeek.lpChange != null && recap.roughWeek.lpChange < 0 && (
+                        <> · {recap.roughWeek.lpChange} LP</>
+                      )}
+                    </p>
+                    <div className="mt-auto pt-4 w-full">
+                      <Badge variant="secondary" className="font-normal">
+                        Played a lot, didn’t go so well
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {(recap.stinkerOfTheWeek.worstKda || recap.stinkerOfTheWeek.mostDeaths) && (
+                <Card className="flex h-full flex-col border-rose-500/30 bg-rose-500/5">
+                  <CardHeader className="pb-2">
+                    <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                      💩 Stinker of the Week 💩
+                    </h2>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col space-y-4">
+                    {recap.stinkerOfTheWeek.worstKda && (
+                      <div>
+                        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Worst KDA in a game</p>
+                        <p className="text-sm">
+                          <PlayerLink
+                            playerId={recap.stinkerOfTheWeek.worstKda.playerId}
+                            gameName={recap.stinkerOfTheWeek.worstKda.gameName}
+                            tagLine={recap.stinkerOfTheWeek.worstKda.tagLine}
+                          />
+                          {recap.stinkerOfTheWeek.worstKda.championName && (
+                            <span className="text-muted-foreground"> on {recap.stinkerOfTheWeek.worstKda.championName}</span>
+                          )}
+                          {" — "}
+                          <Link
+                            href={`/matches/${recap.stinkerOfTheWeek.worstKda.matchDbId}`}
+                            className="font-semibold text-destructive hover:underline"
+                          >
+                            {recap.stinkerOfTheWeek.worstKda.kills}/
+                            {recap.stinkerOfTheWeek.worstKda.deaths}/
+                            {recap.stinkerOfTheWeek.worstKda.assists}
+                            {" "}
+                            ({recap.stinkerOfTheWeek.worstKda.kda.toFixed(2)} KDA)
+                          </Link>
+                        </p>
+                      </div>
+                    )}
+                    {recap.stinkerOfTheWeek.mostDeaths && (
+                      <div>
+                        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Most deaths in a game</p>
+                        <p className="text-sm">
+                          <PlayerLink
+                            playerId={recap.stinkerOfTheWeek.mostDeaths.playerId}
+                            gameName={recap.stinkerOfTheWeek.mostDeaths.gameName}
+                            tagLine={recap.stinkerOfTheWeek.mostDeaths.tagLine}
+                          />
+                          {recap.stinkerOfTheWeek.mostDeaths.championName && (
+                            <span className="text-muted-foreground"> on {recap.stinkerOfTheWeek.mostDeaths.championName}</span>
+                          )}
+                          {" — "}
+                          <Link
+                            href={`/matches/${recap.stinkerOfTheWeek.mostDeaths.matchDbId}`}
+                            className="font-semibold text-destructive hover:underline"
+                          >
+                            {recap.stinkerOfTheWeek.mostDeaths.kills}/
+                            {recap.stinkerOfTheWeek.mostDeaths.deaths}/
+                            {recap.stinkerOfTheWeek.mostDeaths.assists}
+                            {" "}
+                            ({recap.stinkerOfTheWeek.mostDeaths.deaths} deaths 💀)
+                          </Link>
+                        </p>
+                      </div>
+                    )}
+                    <div className="mt-auto pt-4">
+                      <Badge variant="secondary" className="font-normal w-fit">
+                        Yeah mid fed guys...
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {topGrinders.length > 0 && (
+            <Card className="order-8 sm:col-span-2 lg:col-span-3">
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                  Rough week candidate
+                  On the grind this week!
                 </h2>
               </CardHeader>
               <CardContent>
-                <PlayerLink
-                  playerId={recap.roughWeek.playerId}
-                  gameName={recap.roughWeek.gameName}
-                  tagLine={recap.roughWeek.tagLine}
-                />
-                <p className="mt-1 text-muted-foreground">
-                  {recap.roughWeek.reason}
-                  {recap.roughWeek.lpChange != null && recap.roughWeek.lpChange < 0 && (
-                    <> · {recap.roughWeek.lpChange} LP</>
-                  )}
-                </p>
-                <Badge variant="secondary" className="mt-2 font-normal">
-                  Played a lot, didn’t go so well
-                </Badge>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                  {topGrinders.map((p, i) => (
+                    <div
+                      key={p.playerId}
+                      className="flex flex-col items-center justify-center rounded-lg border bg-muted/30 p-4 text-center transition-colors hover:bg-muted/50"
+                    >
+                      <span className="text-3xl font-bold text-foreground">
+                        {p.gamesPlayed}
+                      </span>
+                      <span className="mb-2 mt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Games
+                      </span>
+                      <PlayerLink
+                        playerId={p.playerId}
+                        gameName={p.gameName}
+                        tagLine={p.tagLine}
+                      />
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}
 
-          {(recap.stinkerOfTheWeek.worstKda || recap.stinkerOfTheWeek.mostDeaths) && (
-            <Card className="order-8 sm:col-span-2 lg:col-span-3 border-rose-500/30 bg-rose-500/5">
-              <CardHeader className="pb-2">
-                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                  💩 Stinker of the Week 💩
-                </h2>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {recap.stinkerOfTheWeek.worstKda && (
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">Worst KDA in a game</p>
-                    <p className="text-sm">
-                      <PlayerLink
-                        playerId={recap.stinkerOfTheWeek.worstKda.playerId}
-                        gameName={recap.stinkerOfTheWeek.worstKda.gameName}
-                        tagLine={recap.stinkerOfTheWeek.worstKda.tagLine}
-                      />
-                      {recap.stinkerOfTheWeek.worstKda.championName && (
-                        <span className="text-muted-foreground"> on {recap.stinkerOfTheWeek.worstKda.championName}</span>
-                      )}
-                      {" — "}
-                      <Link
-                        href={`/matches/${recap.stinkerOfTheWeek.worstKda.matchDbId}`}
-                        className="font-semibold text-destructive hover:underline"
-                      >
-                        {recap.stinkerOfTheWeek.worstKda.kills}/
-                        {recap.stinkerOfTheWeek.worstKda.deaths}/
-                        {recap.stinkerOfTheWeek.worstKda.assists}
-                        {" "}
-                        ({recap.stinkerOfTheWeek.worstKda.kda.toFixed(2)} KDA)
-                      </Link>
-                    </p>
-                  </div>
-                )}
-                {recap.stinkerOfTheWeek.mostDeaths && (
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">Most deaths in a game</p>
-                    <p className="text-sm">
-                      <PlayerLink
-                        playerId={recap.stinkerOfTheWeek.mostDeaths.playerId}
-                        gameName={recap.stinkerOfTheWeek.mostDeaths.gameName}
-                        tagLine={recap.stinkerOfTheWeek.mostDeaths.tagLine}
-                      />
-                      {recap.stinkerOfTheWeek.mostDeaths.championName && (
-                        <span className="text-muted-foreground"> on {recap.stinkerOfTheWeek.mostDeaths.championName}</span>
-                      )}
-                      {" — "}
-                      <Link
-                        href={`/matches/${recap.stinkerOfTheWeek.mostDeaths.matchDbId}`}
-                        className="font-semibold text-destructive hover:underline"
-                      >
-                        {recap.stinkerOfTheWeek.mostDeaths.kills}/
-                        {recap.stinkerOfTheWeek.mostDeaths.deaths}/
-                        {recap.stinkerOfTheWeek.mostDeaths.assists}
-                        {" "}
-                        ({recap.stinkerOfTheWeek.mostDeaths.deaths} deaths 💀)
-                      </Link>
-                    </p>
-                  </div>
-                )}
-                <Badge variant="secondary" className="font-normal">
-                  Yeah mid fed guys...
-                </Badge>
-              </CardContent>
-            </Card>
-          )}
           {recap.queueRecommendations && recap.queueRecommendations.length > 0 && (
             <Card className="order-9 sm:col-span-2 lg:col-span-3">
               <CardHeader className="pb-2">
