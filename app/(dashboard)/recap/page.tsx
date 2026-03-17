@@ -85,25 +85,31 @@ export default async function RecapPage() {
             </Card>
           )}
 
-          {recap.biggestLpLoser && (
-            <Card className="order-2 lg:order-2">
-              <CardHeader className="pb-2">
-                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                  Biggest LP loser
-                </h2>
-              </CardHeader>
-              <CardContent>
-                <PlayerLink
-                  playerId={recap.biggestLpLoser.playerId}
-                  gameName={recap.biggestLpLoser.gameName}
-                  tagLine={recap.biggestLpLoser.tagLine}
-                />
-                <p className="mt-1 text-lg font-semibold text-destructive">
-                  {recap.biggestLpLoser.label}
+          <Card className="order-2 lg:order-2">
+            <CardHeader className="pb-2">
+              <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                Biggest LP loser
+              </h2>
+            </CardHeader>
+            <CardContent>
+              {recap.biggestLpLoser && recap.biggestLpLoser.value < 0 ? (
+                <>
+                  <PlayerLink
+                    playerId={recap.biggestLpLoser.playerId}
+                    gameName={recap.biggestLpLoser.gameName}
+                    tagLine={recap.biggestLpLoser.tagLine}
+                  />
+                  <p className="mt-1 text-lg font-semibold text-destructive">
+                    {recap.biggestLpLoser.label}
+                  </p>
+                </>
+              ) : (
+                <p className="font-medium text-muted-foreground">
+                  No bums yet
                 </p>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
 
           {recap.bestWinrate && (
             <Card className="order-3 lg:order-4">

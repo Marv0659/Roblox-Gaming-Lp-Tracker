@@ -62,10 +62,10 @@ function SessionRecapContent({ recap }: { recap: SessionRecapData }) {
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {recap.biggestWinner && recap.biggestWinner.netLp != null && recap.biggestWinner.netLp > 0 && (
-              <Card>
+              <Card className="order-1 lg:order-1">
                 <CardHeader className="pb-2">
                   <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                    Biggest winner
+                    Biggest LP gain
                   </h2>
                 </CardHeader>
                 <CardContent>
@@ -86,33 +86,39 @@ function SessionRecapContent({ recap }: { recap: SessionRecapData }) {
               </Card>
             )}
 
-            {recap.biggestLoser && recap.biggestLoser.netLp != null && recap.biggestLoser.netLp < 0 && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                    Biggest loser
-                  </h2>
-                </CardHeader>
-                <CardContent>
-                  <PlayerLink
-                    playerId={recap.biggestLoser.playerId}
-                    gameName={recap.biggestLoser.gameName}
-                    tagLine={recap.biggestLoser.tagLine}
-                  />
-                  <p className="mt-1 text-lg font-semibold text-destructive">
-                    {recap.biggestLoser.netLp} LP
-                    {recap.biggestLoser.gamesPlayed > 0 && (
-                      <span className="ml-1 text-sm font-normal text-muted-foreground">
-                        ({recap.biggestLoser.gamesPlayed} games)
-                      </span>
-                    )}
+            <Card className="order-2 lg:order-2">
+              <CardHeader className="pb-2">
+                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                  Biggest LP loss
+                </h2>
+              </CardHeader>
+              <CardContent>
+                {recap.biggestLoser && recap.biggestLoser.netLp != null && recap.biggestLoser.netLp < 0 ? (
+                  <>
+                    <PlayerLink
+                      playerId={recap.biggestLoser.playerId}
+                      gameName={recap.biggestLoser.gameName}
+                      tagLine={recap.biggestLoser.tagLine}
+                    />
+                    <p className="mt-1 text-lg font-semibold text-destructive">
+                      {recap.biggestLoser.netLp} LP
+                      {recap.biggestLoser.gamesPlayed > 0 && (
+                        <span className="ml-1 text-sm font-normal text-muted-foreground">
+                          ({recap.biggestLoser.gamesPlayed} games)
+                        </span>
+                      )}
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-medium text-muted-foreground">
+                    No bums yet
                   </p>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
 
             {recap.bestMatch && (
-              <Card>
+              <Card className="order-3 lg:order-4">
                 <CardHeader className="pb-2">
                   <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     Best match
@@ -140,7 +146,7 @@ function SessionRecapContent({ recap }: { recap: SessionRecapData }) {
             )}
 
             {recap.worstCollapse && (
-              <Card>
+              <Card className="order-4 lg:order-5">
                 <CardHeader className="pb-2">
                   <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     Worst collapse
@@ -168,7 +174,7 @@ function SessionRecapContent({ recap }: { recap: SessionRecapData }) {
             )}
 
             {recap.sessionMvp && (
-              <Card className="border-emerald-500/20 bg-emerald-500/5">
+              <Card className="order-5 lg:order-3 border-emerald-500/20 bg-emerald-500/5">
                 <CardHeader className="pb-2">
                   <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     Session MVP
@@ -188,7 +194,7 @@ function SessionRecapContent({ recap }: { recap: SessionRecapData }) {
             )}
 
             {recap.sessionFraud && (
-              <Card className="border-amber-500/30 bg-amber-500/5">
+              <Card className="order-6 lg:order-6 border-amber-500/30 bg-amber-500/5">
                 <CardHeader className="pb-2">
                   <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     Session fraud
