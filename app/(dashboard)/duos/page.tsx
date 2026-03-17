@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
-const MIN_GAMES_FOR_BEST = 2;
+const MIN_GAMES_FOR_BEST = 5;
 
 export default async function DuosPage() {
   const duos = await getDuoStats();
@@ -53,7 +53,7 @@ export default async function DuosPage() {
                 </p>
               ) : (
                 <ul className="space-y-3">
-                  {bestDuos.slice(0, 10).map((duo) => {
+                  {bestDuos.slice(0, 5).map((duo) => {
                     const isHighWr = duo.winrate >= 60;
                     const isMidWr = duo.winrate >= 50 && duo.winrate < 60;
 
