@@ -64,31 +64,52 @@ export type SyncAllResult =
   | { ok: true; playersSynced: number; totalMatchesAdded: number }
   | { ok: false; error: string; playersSynced?: number; totalMatchesAdded?: number; errors?: string[] };
 
+const SYNC_ALL_CONCURRENCY = 3;
+
 export async function syncAllPlayers(): Promise<SyncAllResult> {
   try {
     const players = await prisma.trackedPlayer.findMany({
       select: { id: true },
     });
+
     if (players.length === 0) {
       return { ok: true, playersSynced: 0, totalMatchesAdded: 0 };
     }
+
     let totalMatchesAdded = 0;
+    let playersSynced = 0;
     const errors: string[] = [];
-    for (const { id } of players) {
-      try {
-        const { matchesAdded } = await syncPlayer(id);
-        totalMatchesAdded += matchesAdded;
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "Sync failed";
-        errors.push(`${id.slice(0, 8)}…: ${msg}`);
+
+    for (let i = 0; i < players.length; i += SYNC_ALL_CONCURRENCY) {
+      const chunk = players.slice(i, i + SYNC_ALL_CONCURRENCY);
+
+      const settled = await Promise.allSettled(
+        chunk.map(async ({ id }) => {
+          const result = await syncPlayer(id);
+          return { id, matchesAdded: result.matchesAdded };
+        })
+      );
+
+      for (const item of settled) {
+        if (item.status === "fulfilled") {
+          playersSynced += 1;
+          totalMatchesAdded += item.value.matchesAdded;
+        } else {
+          const reason = item.reason instanceof Error ? item.reason.message : "Sync failed";
+          const failedId =
+            chunk[settled.indexOf(item)]?.id?.slice(0, 8) ?? "unknown";
+          errors.push(`${failedId}…: ${reason}`);
+        }
       }
     }
+
     revalidatePath("/dashboard");
     revalidatePath("/players");
     for (const { id } of players) {
       revalidatePath(`/players/${id}`);
     }
-    if (errors.length === players.length) {
+
+    if (playersSynced === 0) {
       return {
         ok: false,
         error: "All syncs failed.",
@@ -97,9 +118,10 @@ export async function syncAllPlayers(): Promise<SyncAllResult> {
         errors,
       };
     }
+
     return {
       ok: true,
-      playersSynced: players.length - errors.length,
+      playersSynced,
       totalMatchesAdded,
     };
   } catch (e) {
