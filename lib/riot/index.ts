@@ -172,10 +172,25 @@ export async function syncMatchesForPlayer(
   });
   if (!player) throw new Error("Tracked player not found");
 
-  const matchIds = await getMatchIdsByPuuid(player.routingRegion, player.puuid, {
-    count,
-    queue: RANKED_QUEUE_IDS[0], // 420 solo; extend to 440 if you want flex
-  });
+  // Fetch both ranked queues (420 solo/duo + 440 flex), then dedupe.
+  // Also fetch a generic recent list as a fallback in case queue-filtered
+  // match ID endpoints are inconsistent for some accounts/regions.
+  const idsPerQueue = await Promise.all(
+    RANKED_QUEUE_IDS.map((queueId) =>
+      getMatchIdsByPuuid(player.routingRegion, player.puuid, {
+        count,
+        queue: queueId,
+      })
+    )
+  );
+  const fallbackRecentIds = await getMatchIdsByPuuid(
+    player.routingRegion,
+    player.puuid,
+    {
+      count: Math.max(count * 2, 50),
+    }
+  );
+  const matchIds = [...new Set([...idsPerQueue.flat(), ...fallbackRecentIds])];
 
   const allTracked = await prisma.trackedPlayer.findMany({
     select: { id: true, puuid: true },
@@ -187,27 +202,66 @@ export async function syncMatchesForPlayer(
     const existing = await prisma.match.findUnique({
       where: { riotMatchId: matchId },
     });
-    if (existing) continue;
-
     const matchDto = await getMatchById(player.routingRegion, matchId);
-    const participantsToCreate: Array<{
-      trackedPlayerId: string;
-      p: ParticipantDto;
-    }> = [];
-    for (const p of matchDto.info.participants) {
-      const tid = puuidToId.get(p.puuid);
-      if (tid) participantsToCreate.push({ trackedPlayerId: tid, p });
+    // Keep only ranked solo/flex games in DB for this sync path.
+    if (!RANKED_QUEUE_IDS.includes(matchDto.info.queueId as (typeof RANKED_QUEUE_IDS)[number])) {
+      continue;
     }
-    if (participantsToCreate.length === 0) continue;
 
-    await prisma.match.create({
+    const trackedParticipants = matchDto.info.participants
+      .map((p) => ({ p, trackedPlayerId: puuidToId.get(p.puuid) }))
+      .filter(
+        (x): x is { p: ParticipantDto; trackedPlayerId: string } =>
+          typeof x.trackedPlayerId === "string"
+      );
+    if (trackedParticipants.length === 0) continue;
+
+    if (!existing) {
+      await prisma.match.create({
+        data: {
+          riotMatchId: matchDto.metadata.matchId,
+          gameStartAt: new Date(matchDto.info.gameStartTimestamp),
+          queueId: matchDto.info.queueId,
+          gameDuration: matchDto.info.gameDuration,
+          participants: {
+            create: trackedParticipants.map(({ trackedPlayerId, p }) => ({
+              trackedPlayerId,
+              championId: p.championId,
+              championName: p.championName ?? undefined,
+              kills: p.kills,
+              deaths: p.deaths,
+              assists: p.assists,
+              win: p.win,
+              teamPosition: p.teamPosition || undefined,
+              lane: p.individualPosition || undefined,
+              cs: p.totalMinionsKilled + (p.neutralMinionsKilled ?? 0),
+              gold: p.goldEarned,
+              damageDealt: p.totalDamageDealtToChampions,
+              visionScore: p.visionScore,
+            })),
+          },
+        },
+      });
+      matchesAdded++;
+      continue;
+    }
+
+    // Match already exists: backfill any missing tracked participants.
+    const existingParticipants = await prisma.matchParticipant.findMany({
+      where: { matchId: existing.id },
+      select: { trackedPlayerId: true },
+    });
+    const existingIds = new Set(existingParticipants.map((p) => p.trackedPlayerId));
+    const missing = trackedParticipants.filter(
+      ({ trackedPlayerId }) => !existingIds.has(trackedPlayerId)
+    );
+    if (missing.length === 0) continue;
+
+    await prisma.match.update({
+      where: { id: existing.id },
       data: {
-        riotMatchId: matchDto.metadata.matchId,
-        gameStartAt: new Date(matchDto.info.gameStartTimestamp),
-        queueId: matchDto.info.queueId,
-        gameDuration: matchDto.info.gameDuration,
         participants: {
-          create: participantsToCreate.map(({ trackedPlayerId, p }) => ({
+          create: missing.map(({ trackedPlayerId, p }) => ({
             trackedPlayerId,
             championId: p.championId,
             championName: p.championName ?? undefined,
@@ -225,7 +279,6 @@ export async function syncMatchesForPlayer(
         },
       },
     });
-    matchesAdded++;
   }
   return { matchesAdded };
 }

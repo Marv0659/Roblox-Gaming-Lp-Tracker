@@ -18,6 +18,12 @@ function formatRelative(date: Date): string {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
+function queueLabel(queueId: number): string {
+  if (queueId === 420) return "Solo/Duo";
+  if (queueId === 440) return "Flex";
+  return "Ranked";
+}
+
 function FeedChip({ item }: { item: RecentMatchFeedItem }) {
   return (
     <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-xs">
@@ -42,6 +48,9 @@ function FeedChip({ item }: { item: RecentMatchFeedItem }) {
           )}
         >
           {item.gameDuration < 210 ? "R" : item.win ? "W" : "L"}
+        </span>
+        <span className="rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+          {queueLabel(item.queueId)}
         </span>
         <span className="text-muted-foreground">{item.championName ?? "—"}</span>
         <span className="text-muted-foreground tabular-nums">

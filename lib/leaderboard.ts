@@ -129,6 +129,7 @@ export interface RecentMatchFeedItem {
   gameName: string;
   tagLine: string;
   win: boolean;
+  queueId: number;
   championName: string | null;
   kills: number;
   deaths: number;
@@ -147,7 +148,7 @@ export async function getRecentMatchFeed(
     take: limit,
     orderBy: { match: { gameStartAt: "desc" } },
     include: {
-      match: { select: { id: true, gameStartAt: true, gameDuration: true } },
+      match: { select: { id: true, gameStartAt: true, gameDuration: true, queueId: true } },
       trackedPlayer: { select: { id: true, gameName: true, tagLine: true } },
     },
   });
@@ -156,6 +157,7 @@ export async function getRecentMatchFeed(
     gameName: p.trackedPlayer.gameName,
     tagLine: p.trackedPlayer.tagLine,
     win: p.win,
+    queueId: p.match.queueId,
     championName: p.championName,
     kills: p.kills,
     deaths: p.deaths,
@@ -275,6 +277,7 @@ export interface PlayerDetail {
     id: string;
     matchDbId: string;
     matchId: string;
+    queueId: number;
     championName: string | null;
     kills: number;
     deaths: number;
@@ -457,6 +460,7 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
       id: mp.id,
       matchDbId: mp.match.id,
       matchId: mp.match.riotMatchId,
+      queueId: mp.match.queueId,
       championName: mp.championName,
       kills: mp.kills,
       deaths: mp.deaths,

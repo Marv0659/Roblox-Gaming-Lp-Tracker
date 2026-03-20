@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPlayerDetail, estimatedLpForMatch } from "@/lib/leaderboard";
+import { getPlayerDetail } from "@/lib/leaderboard";
 import { getRecentRankEventsForPlayer } from "@/lib/rank-events";
 import { getPlayerBadges, getRoughPatchSummary, BADGE_TOOLTIPS } from "@/lib/player-badges";
 import { getBeastestHolder } from "@/lib/beastest";
@@ -8,6 +8,7 @@ import type { ChampionTrustLabel } from "@/lib/champion-trust";
 import { getQueueRecommendationForPlayer } from "@/lib/queue-recommendation";
 import { SyncButton } from "./sync-button";
 import { ViewSwitcher } from "./view-switcher";
+import { RecentMatchesTabs } from "./recent-matches-tabs";
 import { LpHistoryChart } from "@/components/lp-history-chart";
 import { RecentRankEvents } from "@/components/recent-rank-events";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -355,88 +356,7 @@ export default async function PlayerDetailPage({
           <h2 className="text-lg font-semibold">Recent matches</h2>
         </CardHeader>
         <CardContent>
-          {player.recentMatches.length === 0 ? (
-            <p className="text-muted-foreground">
-              No matches stored. Sync to fetch recent ranked games.
-            </p>
-          ) : (
-            <div className="overflow-x-auto overflow-y-hidden -webkit-overflow-scrolling-touch">
-              <table className="w-full min-w-[520px] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground">
-                    <th className="pb-2 pr-2 sm:pr-4">Champion</th>
-                    <th className="pb-2 pr-2 sm:pr-4">K/D/A</th>
-                    <th className="pb-2 pr-2 sm:pr-4">Result</th>
-                    <th className="pb-2 pr-2 sm:pr-4" title="LP change: from snapshots (sync before/after match) when available, otherwise estimated.">LP</th>
-                    <th className="pb-2 pr-2 sm:pr-4">
-                      CS <span className="text-[11px] font-normal text-muted-foreground">(/m)</span>
-                    </th>
-                    <th className="pb-2 pr-2 sm:pr-4">
-                      Gold <span className="text-[11px] font-normal text-muted-foreground">(/m)</span>
-                    </th>
-                    <th className="pb-2 pr-2 sm:pr-4">
-                      Damage <span className="text-[11px] font-normal text-muted-foreground">(/m)</span>
-                    </th>
-                    <th className="pb-2">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {player.recentMatches.map((m) => {
-                    const remake = m.gameDuration < 210;
-                    const lp = remake ? 0 : (m.lpChange ?? estimatedLpForMatch(m.win));
-                    const isCalculated = m.lpChange !== null;
-                    const mins = Math.max(1, m.gameDuration / 60);
-                    return (
-                    <tr
-                      key={m.id}
-                      className="border-b border-border text-muted-foreground last:border-b-0"
-                    >
-                      <td className="py-2 pr-2 font-medium text-foreground sm:pr-4">
-                        {m.championName ?? "—"}
-                      </td>
-                      <td className="py-2 pr-2 sm:pr-4">
-                        {m.kills}/{m.deaths}/{m.assists}
-                      </td>
-                      <td className="py-2 pr-2 sm:pr-4">
-                        {remake ? (
-                          <span className="text-muted-foreground">Remake</span>
-                        ) : (
-                          <span className={m.win ? "text-emerald-500" : "text-destructive"}>
-                            {m.win ? "Win" : "Loss"}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 pr-2 sm:pr-4" title={isCalculated ? "From rank snapshots (sync before and after this match)." : "Estimated (no snapshots bracketing this match; typical +24 win, -18 loss)."}>
-                        <span className={remake ? "text-muted-foreground font-medium" : (lp >= 0 ? "text-emerald-500 font-medium" : "text-destructive font-medium")}>
-                          {remake ? "±0" : `${lp >= 0 ? "+" : ""}${lp}`}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-2 sm:pr-4">
-                        {m.cs}
-                        <span className="ml-1 text-[11px] text-muted-foreground">({(m.cs / mins).toFixed(1)})</span>
-                      </td>
-                      <td className="py-2 pr-2 sm:pr-4">
-                        {m.gold.toLocaleString()}
-                        <span className="ml-1 text-[11px] text-muted-foreground">({(m.gold / mins).toFixed(1)})</span>
-                      </td>
-                      <td className="py-2 pr-2 sm:pr-4">
-                        {m.damageDealt.toLocaleString()}
-                        <span className="ml-1 text-[11px] text-muted-foreground">({(m.damageDealt / mins).toFixed(1)})</span>
-                      </td>
-                      <td className="py-2 text-muted-foreground">
-                        <Link
-                          href={`/matches/${m.matchDbId}`}
-                          className="text-primary hover:underline"
-                        >
-                          {formatDate(m.gameStartAt)}
-                        </Link>
-                      </td>
-                    </tr>
-                  );})}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <RecentMatchesTabs matches={player.recentMatches} />
         </CardContent>
       </Card>
 
