@@ -64,7 +64,46 @@ export type SyncAllResult =
   | { ok: true; playersSynced: number; totalMatchesAdded: number }
   | { ok: false; error: string; playersSynced?: number; totalMatchesAdded?: number; errors?: string[] };
 
-const SYNC_ALL_CONCURRENCY = 3;
+const SYNC_ALL_CONCURRENCY = 1; // safer in prod against Riot 429
+const MAX_SYNC_RETRIES = 2;
+const DEFAULT_RETRY_MS = 5_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRateLimitError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /rate limited/i.test(message) || /429/.test(message);
+}
+
+function retryAfterMsFromError(error: unknown): number {
+  const message = error instanceof Error ? error.message : String(error);
+  const match = message.match(/Retry after:\s*(\d+)s/i);
+  if (!match) return DEFAULT_RETRY_MS;
+  const seconds = Number(match[1]);
+  if (!Number.isFinite(seconds) || seconds <= 0) return DEFAULT_RETRY_MS;
+  // Add a small buffer to avoid immediate re-429.
+  return seconds * 1000 + 750;
+}
+
+async function syncPlayerWithRetry(
+  trackedPlayerId: string
+): Promise<{ id: string; matchesAdded: number }> {
+  let attempt = 0;
+  while (true) {
+    try {
+      const result = await syncPlayer(trackedPlayerId);
+      return { id: trackedPlayerId, matchesAdded: result.matchesAdded };
+    } catch (error) {
+      attempt += 1;
+      if (!isRateLimitError(error) || attempt > MAX_SYNC_RETRIES) {
+        throw error;
+      }
+      await sleep(retryAfterMsFromError(error));
+    }
+  }
+}
 
 export async function syncAllPlayers(): Promise<SyncAllResult> {
   try {
@@ -85,8 +124,7 @@ export async function syncAllPlayers(): Promise<SyncAllResult> {
 
       const settled = await Promise.allSettled(
         chunk.map(async ({ id }) => {
-          const result = await syncPlayer(id);
-          return { id, matchesAdded: result.matchesAdded };
+          return syncPlayerWithRetry(id);
         })
       );
 
