@@ -3,11 +3,27 @@ import type { LeaderboardEntry } from "@/lib/leaderboard";
 import { tierColor, tierGlowClass } from "@/lib/tier-colors";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { RankBadge } from "@/components/rank-badge";
 import { cn } from "@/lib/utils";
 
 interface Props {
   entry: LeaderboardEntry;
   index: number;
+}
+
+function rankToDivision(rank?: string | null): string {
+  switch ((rank ?? "").toUpperCase()) {
+    case "I":
+      return "1";
+    case "II":
+      return "2";
+    case "III":
+      return "3";
+    case "IV":
+      return "4";
+    default:
+      return "";
+  }
 }
 
 /**
@@ -16,6 +32,7 @@ interface Props {
  */
 export function LeaderboardCard({ entry, index }: Props) {
   const glow = tierGlowClass(entry.tier);
+  const division = rankToDivision(entry.rank);
   return (
     <Link href={`/players/${entry.id}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg">
       <Card className="relative overflow-hidden transition-colors hover:bg-muted/30 active:bg-muted/50">
@@ -43,9 +60,14 @@ export function LeaderboardCard({ entry, index }: Props) {
                   {entry.region}
                 </Badge>
               </div>
-              <p className={cn("mt-1 text-sm font-semibold", tierColor(entry.tier))} title="Tier and LP">
-                {entry.tier} {entry.rank || ""} · {entry.leaguePoints} LP
-              </p>
+              <div className="mt-0.5 flex items-center gap-0" title="Rank badge and tier">
+                
+                <RankBadge tier={entry.tier} className="h-20 w-20" />
+                <span className={cn("-ml-3 text-base font-semibold", tierColor(entry.tier))}>
+                  {entry.tier}
+                  {division ? ` ${division}` : ""}
+                </span>
+              </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 <span className="font-medium text-emerald-500">{entry.wins}</span>
                 <span className="text-muted-foreground"> W / </span>

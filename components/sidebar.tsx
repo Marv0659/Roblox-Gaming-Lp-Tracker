@@ -3,17 +3,28 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import {
+  Award,
+  Flame,
+  Home,
+  Settings,
+  ShieldCheck,
+  Skull,
+  TrendingUp,
+  UserRound,
+  Users,
+} from "lucide-react";
 
 const nav = [
-  { href: "/dashboard", label: "Leaderboard" },
-  { href: "/players", label: "Players" },
-  { href: "/duos", label: "Duos" },
-  { href: "/recap", label: "Weekly recap" },
-  { href: "/session-recap", label: "Session recap" },
-  { href: "/hall-of-fame", label: "Hall of fame" },
-  { href: "/hall-of-shame", label: "Hall of shame" },
-  { href: "/champion-trust", label: "Champion trust" },
-  { href: "/settings", label: "Settings" },
+  { href: "/dashboard", label: "Leaderboard", icon: Home },
+  { href: "/players", label: "Players", icon: UserRound },
+  { href: "/duos", label: "Duos", icon: Users },
+  { href: "/recap", label: "Weekly recap", icon: TrendingUp },
+  { href: "/session-recap", label: "Session recap", icon: Flame },
+  { href: "/hall-of-fame", label: "Hall of fame", icon: Award },
+  { href: "/hall-of-shame", label: "Hall of shame", icon: Skull },
+  { href: "/champion-trust", label: "Champion trust", icon: ShieldCheck },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -69,14 +80,15 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "block rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 pathname === item.href
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
               )}
               onClick={onClose}
             >
-              {item.label}
+              <item.icon className="h-4 w-4 shrink-0" aria-hidden />
+              <span>{item.label}</span>
             </Link>
           ))}
         </nav>
