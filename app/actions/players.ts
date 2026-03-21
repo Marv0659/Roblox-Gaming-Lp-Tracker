@@ -149,6 +149,79 @@ export async function syncAllPlayers(): Promise<SyncAllResult> {
   }
 }
 
+const CRON_CURSOR_ID = "singleton";
+
+export type SyncNextPlayerResult =
+  | {
+      ok: true;
+      matchesAdded: number;
+      playerId: string;
+      gameName: string;
+      step: number;
+      total: number;
+    }
+  | { ok: false; error: string };
+
+/**
+ * Sync exactly one tracked player (next in rotation), for short cron timeouts (e.g. 30s).
+ * Persists cursor in `CronSyncState` so each cron tick advances through the roster.
+ */
+export async function syncNextPlayerForCron(): Promise<SyncNextPlayerResult> {
+  try {
+    const players = await prisma.trackedPlayer.findMany({
+      select: { id: true, gameName: true },
+      orderBy: { id: "asc" },
+    });
+
+    if (players.length === 0) {
+      return {
+        ok: true,
+        matchesAdded: 0,
+        playerId: "",
+        gameName: "",
+        step: 0,
+        total: 0,
+      };
+    }
+
+    const state = await prisma.cronSyncState.findUnique({
+      where: { id: CRON_CURSOR_ID },
+    });
+
+    let nextIndex = 0;
+    if (state?.lastPlayerId) {
+      const idx = players.findIndex((p) => p.id === state.lastPlayerId);
+      nextIndex = idx >= 0 ? (idx + 1) % players.length : 0;
+    }
+
+    const target = players[nextIndex]!;
+
+    const result = await syncPlayer(target.id, syncAllOptions);
+
+    await prisma.cronSyncState.upsert({
+      where: { id: CRON_CURSOR_ID },
+      create: { id: CRON_CURSOR_ID, lastPlayerId: target.id },
+      update: { lastPlayerId: target.id },
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/players");
+    revalidatePath(`/players/${target.id}`);
+
+    return {
+      ok: true,
+      matchesAdded: result.matchesAdded,
+      playerId: target.id,
+      gameName: target.gameName,
+      step: nextIndex + 1,
+      total: players.length,
+    };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Sync step failed.";
+    return { ok: false, error: message };
+  }
+}
+
 export async function getTrackedPlayers() {
   return prisma.trackedPlayer.findMany({
     orderBy: { createdAt: "desc" },

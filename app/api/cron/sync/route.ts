@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { syncAllPlayers } from "@/app/actions/players";
+import { syncAllPlayers, syncNextPlayerForCron } from "@/app/actions/players";
 
 /**
- * Vercel Cron: syncs rank + matches for all tracked players.
- * Set CRON_SECRET in Vercel env; cron sends Authorization: Bearer <CRON_SECRET>.
- * Schedule is in vercel.json crons[].schedule (cron expression, UTC).
+ * Vercel Cron / external cron (cron-job.org): syncs tracked players.
+ * Set CRON_SECRET in Vercel env; send Authorization: Bearer <CRON_SECRET>.
+ *
+ * - Default: sync **all** players (can exceed 30s — use for daily Vercel cron or high timeouts).
+ * - `?mode=step`: sync **one** player per request (rotates). Use for cron-job.org 30s timeout.
  */
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -18,6 +20,27 @@ export async function GET(request: Request) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 }
+    );
+  }
+
+  const mode = new URL(request.url).searchParams.get("mode");
+
+  if (mode === "step" || mode === "one") {
+    const result = await syncNextPlayerForCron();
+    if (result.ok) {
+      return NextResponse.json({
+        ok: true,
+        mode: "step",
+        playerId: result.playerId,
+        gameName: result.gameName,
+        matchesAdded: result.matchesAdded,
+        step: result.step,
+        total: result.total,
+      });
+    }
+    return NextResponse.json(
+      { ok: false, mode: "step", error: result.error },
+      { status: 500 }
     );
   }
 

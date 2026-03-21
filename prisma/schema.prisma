@@ -91,6 +91,13 @@ model TrackedPlayer {
   @@index([gameName, tagLine, region])
 }
 
+/// Single row: which tracked player to sync next on `/api/cron/sync?mode=step` (short cron timeouts).
+model CronSyncState {
+  id           String   @id // always "singleton"
+  lastPlayerId String?
+  updatedAt    DateTime @updatedAt
+}
+
 /// Rank snapshot: time-series of rank info per queue
 model RankSnapshot {
   id        String   @id @default(cuid())
