@@ -10,6 +10,7 @@ import {
   Settings,
   ShieldCheck,
   Skull,
+  Sparkles,
   TrendingUp,
   UserRound,
   Users,
@@ -18,6 +19,7 @@ import {
 const nav = [
   { href: "/dashboard", label: "Leaderboard", icon: Home },
   { href: "/players", label: "Players", icon: UserRound },
+  { href: "/ranked-wrapped", label: "Ranked Wrapped", icon: Sparkles },
   { href: "/duos", label: "Duos", icon: Users },
   { href: "/recap", label: "Weekly recap", icon: TrendingUp },
   { href: "/session-recap", label: "Session recap", icon: Flame },

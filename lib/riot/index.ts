@@ -163,34 +163,77 @@ export async function syncRankedForPlayer(trackedPlayerId: string): Promise<void
  * and upserts Match + MatchParticipant for every tracked player in that match.
  * Skips if match already in DB.
  */
+export type SyncMatchesOptions = {
+  /**
+   * Size of the unfiltered "recent match ids" list (fallback).
+   * Default: max(count * 2, 50) — high call volume. For bulk sync, pass a smaller cap (e.g. 24–36).
+   */
+  fallbackMatchListSize?: number;
+  /**
+   * If true (default), only request match IDs after the latest game we already have in DB
+   * (Riot `startTime`). Huge API savings for routine syncs. Set false for a full history refresh.
+   */
+  incremental?: boolean;
+};
+
+/** Latest ranked match we store for this player → Riot `startTime` (seconds), with overlap. */
+async function getIncrementalStartTimeSeconds(
+  trackedPlayerId: string
+): Promise<number | undefined> {
+  const row = await prisma.matchParticipant.findFirst({
+    where: { trackedPlayerId },
+    orderBy: { match: { gameStartAt: "desc" } },
+    select: {
+      match: { select: { gameStartAt: true } },
+    },
+  });
+  if (!row?.match?.gameStartAt) return undefined;
+  // Small overlap so we don’t miss edge ordering / same-minute games.
+  const OVERLAP_SEC = 180;
+  return Math.floor(row.match.gameStartAt.getTime() / 1000) - OVERLAP_SEC;
+}
+
 export async function syncMatchesForPlayer(
   trackedPlayerId: string,
-  count: number = 20
+  count: number = 20,
+  syncOpts?: SyncMatchesOptions
 ): Promise<{ matchesAdded: number }> {
   const player = await prisma.trackedPlayer.findUnique({
     where: { id: trackedPlayerId },
   });
   if (!player) throw new Error("Tracked player not found");
 
+  const fallbackListSize =
+    syncOpts?.fallbackMatchListSize ?? Math.max(count * 2, 50);
+
+  const incremental = syncOpts?.incremental !== false;
+  const startTime =
+    incremental ? await getIncrementalStartTimeSeconds(trackedPlayerId) : undefined;
+  const listOpts = (extra: { count: number; queue?: number }) => ({
+    ...extra,
+    ...(startTime != null ? { startTime } : {}),
+  });
+
   // Fetch both ranked queues (420 solo/duo + 440 flex), then dedupe.
   // Also fetch a generic recent list as a fallback in case queue-filtered
   // match ID endpoints are inconsistent for some accounts/regions.
-  const idsPerQueue = await Promise.all(
-    RANKED_QUEUE_IDS.map((queueId) =>
-      getMatchIdsByPuuid(player.routingRegion, player.puuid, {
-        count,
-        queue: queueId,
-      })
-    )
+  // Sequential (not Promise.all) to avoid bursting the rate limit when syncing many players.
+  const ids420 = await getMatchIdsByPuuid(
+    player.routingRegion,
+    player.puuid,
+    listOpts({ count, queue: RANKED_QUEUE_IDS[0] })
+  );
+  const ids440 = await getMatchIdsByPuuid(
+    player.routingRegion,
+    player.puuid,
+    listOpts({ count, queue: RANKED_QUEUE_IDS[1] })
   );
   const fallbackRecentIds = await getMatchIdsByPuuid(
     player.routingRegion,
     player.puuid,
-    {
-      count: Math.max(count * 2, 50),
-    }
+    listOpts({ count: fallbackListSize })
   );
-  const matchIds = [...new Set([...idsPerQueue.flat(), ...fallbackRecentIds])];
+  const matchIds = [...new Set([...ids420, ...ids440, ...fallbackRecentIds])];
 
   const allTracked = await prisma.trackedPlayer.findMany({
     select: { id: true, puuid: true },
@@ -283,15 +326,31 @@ export async function syncMatchesForPlayer(
   return { matchesAdded };
 }
 
+export type SyncPlayerOptions = {
+  /** Passed to match list + detail sync (default 20). Lower = fewer API calls. */
+  matchCount?: number;
+  /** Overrides fallback recent-match list size (see SyncMatchesOptions). */
+  fallbackMatchListSize?: number;
+  /** When false, fetches full recent history (no `startTime`). Default true. */
+  incremental?: boolean;
+};
+
 /**
  * Full sync for a tracked player: ranked + recent matches.
  * Extension: add a cron or background job that calls this for all players.
  */
 export async function syncPlayer(
-  trackedPlayerId: string
+  trackedPlayerId: string,
+  opts?: SyncPlayerOptions
 ): Promise<{ rankedSynced: boolean; matchesAdded: number }> {
   await syncRankedForPlayer(trackedPlayerId);
-  const { matchesAdded } = await syncMatchesForPlayer(trackedPlayerId);
+  const matchCount = opts?.matchCount ?? 20;
+  const { matchesAdded } = await syncMatchesForPlayer(trackedPlayerId, matchCount, {
+    ...(opts?.fallbackMatchListSize != null
+      ? { fallbackMatchListSize: opts.fallbackMatchListSize }
+      : {}),
+    ...(opts?.incremental != null ? { incremental: opts.incremental } : {}),
+  });
   return { rankedSynced: true, matchesAdded };
 }
 

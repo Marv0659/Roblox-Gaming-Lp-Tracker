@@ -74,6 +74,14 @@ export default async function PlayerDetailPage({
             {player.gameName}
             <span className="font-normal text-muted-foreground">#{player.tagLine}</span>
           </h1>
+          <p className="mt-1">
+            <Link
+              href={`/ranked-wrapped?player=${encodeURIComponent(id)}`}
+              className="text-sm font-medium text-violet-400 hover:text-violet-300 hover:underline"
+            >
+              Open Ranked Wrapped →
+            </Link>
+          </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="font-normal uppercase" title="Server/region where this account plays (e.g. EUW, NA).">
               {player.region}

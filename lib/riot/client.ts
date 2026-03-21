@@ -27,12 +27,21 @@ export class RiotApiError extends Error {
   }
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Max retries for 429 / transient failures (Riot: respect Retry-After when present). */
+const RIOT_FETCH_MAX_RETRIES = 8;
+
 /**
  * Fetch helper that attaches the Riot API key and normalizes errors.
+ * Automatically retries on 429 using the Retry-After header (seconds) or exponential backoff.
  */
 export async function riotFetch<T>(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  attempt = 0
 ): Promise<T> {
   if (!RIOT_API_KEY) {
     throw new Error("RIOT_API_KEY is not configured");
@@ -49,11 +58,29 @@ export async function riotFetch<T>(
   });
 
   if (res.status === 429) {
+    if (attempt < RIOT_FETCH_MAX_RETRIES) {
+      const retryAfter = res.headers.get("Retry-After");
+      let waitMs: number;
+      if (retryAfter != null && retryAfter !== "") {
+        const sec = Number.parseFloat(retryAfter);
+        waitMs = Number.isFinite(sec) ? Math.ceil(sec * 1000) : 1000 * (attempt + 1);
+      } else {
+        waitMs = Math.min(60_000, 1000 * 2 ** attempt + Math.floor(Math.random() * 400));
+      }
+      await sleep(waitMs);
+      return riotFetch<T>(url, options, attempt + 1);
+    }
     const retryAfter = res.headers.get("Retry-After");
     throw new RiotApiError(
-      `Riot API rate limited. Retry after: ${retryAfter ?? "unknown"}s`,
+      `Riot API rate limited after ${RIOT_FETCH_MAX_RETRIES} retries. Retry-After was: ${retryAfter ?? "unknown"}`,
       429
     );
+  }
+
+  // Occasional gateway / overload — short retry
+  if (res.status === 503 && attempt < RIOT_FETCH_MAX_RETRIES) {
+    await sleep(1500 * (attempt + 1));
+    return riotFetch<T>(url, options, attempt + 1);
   }
 
   if (!res.ok) {

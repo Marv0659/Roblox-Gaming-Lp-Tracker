@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { onboardTrackedPlayer, syncPlayer } from "@/lib/riot";
+import { onboardTrackedPlayer, syncPlayer, type SyncPlayerOptions } from "@/lib/riot";
 import { isValidPlatform } from "@/lib/riot/regions";
 import type { AddPlayerInput } from "@/types/riot";
 
@@ -64,8 +64,34 @@ export type SyncAllResult =
   | { ok: true; playersSynced: number; totalMatchesAdded: number }
   | { ok: false; error: string; playersSynced?: number; totalMatchesAdded?: number; errors?: string[] };
 
-const SYNC_ALL_CONCURRENCY = 3;
+/**
+ * Bulk sync tuning (still runs in one server action — see note below).
+ * Match sync also uses incremental `startTime` by default (lib/riot) so repeat syncs
+ * mostly fetch only new games, not full history.
+ */
+const SYNC_ALL_MATCH_COUNT = 12;
+/** Unfiltered fallback list size (default single-player is max(40, 50)=50). Keep lower for 429 safety. */
+const SYNC_ALL_FALLBACK_MATCH_LIST = 32;
+/** Pause between players so concurrent Riot budget isn’t blown (serial sync-all). */
+const SYNC_ALL_DELAY_MS = 750;
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const syncAllOptions: SyncPlayerOptions = {
+  matchCount: SYNC_ALL_MATCH_COUNT,
+  fallbackMatchListSize: SYNC_ALL_FALLBACK_MATCH_LIST,
+};
+
+/**
+ * Syncs every tracked player sequentially with lighter caps.
+ *
+ * **If this still times out or you want scale:** move work off the request thread — e.g.
+ * a DB-backed job queue + worker, Vercel Cron calling an internal route that syncs *one*
+ * player per run (cursor in DB), or Inngest/Trigger.dev with delays. The Riot client already
+ * retries 429s; incremental match sync reduces call volume on every run after the first.
+ */
 export async function syncAllPlayers(): Promise<SyncAllResult> {
   try {
     const players = await prisma.trackedPlayer.findMany({
@@ -80,26 +106,19 @@ export async function syncAllPlayers(): Promise<SyncAllResult> {
     let playersSynced = 0;
     const errors: string[] = [];
 
-    for (let i = 0; i < players.length; i += SYNC_ALL_CONCURRENCY) {
-      const chunk = players.slice(i, i + SYNC_ALL_CONCURRENCY);
-
-      const settled = await Promise.allSettled(
-        chunk.map(async ({ id }) => {
-          const result = await syncPlayer(id);
-          return { id, matchesAdded: result.matchesAdded };
-        })
-      );
-
-      for (const item of settled) {
-        if (item.status === "fulfilled") {
-          playersSynced += 1;
-          totalMatchesAdded += item.value.matchesAdded;
-        } else {
-          const reason = item.reason instanceof Error ? item.reason.message : "Sync failed";
-          const failedId =
-            chunk[settled.indexOf(item)]?.id?.slice(0, 8) ?? "unknown";
-          errors.push(`${failedId}…: ${reason}`);
-        }
+    // One player at a time + lighter match fetch caps — avoids Riot 429 when syncing the whole squad.
+    for (let i = 0; i < players.length; i++) {
+      const { id } = players[i];
+      try {
+        const result = await syncPlayer(id, syncAllOptions);
+        playersSynced += 1;
+        totalMatchesAdded += result.matchesAdded;
+      } catch (e) {
+        const reason = e instanceof Error ? e.message : "Sync failed";
+        errors.push(`${id.slice(0, 8)}…: ${reason}`);
+      }
+      if (i + 1 < players.length) {
+        await delay(SYNC_ALL_DELAY_MS);
       }
     }
 
