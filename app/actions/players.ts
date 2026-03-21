@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { onboardTrackedPlayer, syncPlayer, type SyncPlayerOptions } from "@/lib/riot";
 import { isValidPlatform } from "@/lib/riot/regions";
@@ -151,6 +152,18 @@ export async function syncAllPlayers(): Promise<SyncAllResult> {
 
 const CRON_CURSOR_ID = "singleton";
 
+/** When `CronSyncState` table is missing on prod (migration not run), rotate by time slot (15 min). */
+const FALLBACK_ROLL_SLOT_MS = 15 * 60 * 1000;
+
+function isCronSyncTableMissing(e: unknown): boolean {
+  if (e instanceof Prisma.PrismaClientKnownRequestError) {
+    if (e.code === "P2021") return true;
+    if (e.code === "P1001" || e.code === "P1017") return true;
+  }
+  const msg = e instanceof Error ? e.message : String(e);
+  return /CronSyncState|cron_sync_state/i.test(msg) && /does not exist|Unknown model|not found/i.test(msg);
+}
+
 export type SyncNextPlayerResult =
   | {
       ok: true;
@@ -184,25 +197,39 @@ export async function syncNextPlayerForCron(): Promise<SyncNextPlayerResult> {
       };
     }
 
-    const state = await prisma.cronSyncState.findUnique({
-      where: { id: CRON_CURSOR_ID },
-    });
-
     let nextIndex = 0;
-    if (state?.lastPlayerId) {
-      const idx = players.findIndex((p) => p.id === state.lastPlayerId);
-      nextIndex = idx >= 0 ? (idx + 1) % players.length : 0;
+    let cursorFromDb = true;
+
+    try {
+      const state = await prisma.cronSyncState.findUnique({
+        where: { id: CRON_CURSOR_ID },
+      });
+      if (state?.lastPlayerId) {
+        const idx = players.findIndex((p) => p.id === state.lastPlayerId);
+        nextIndex = idx >= 0 ? (idx + 1) % players.length : 0;
+      }
+    } catch (e) {
+      if (!isCronSyncTableMissing(e)) throw e;
+      cursorFromDb = false;
+      nextIndex = Math.floor(Date.now() / FALLBACK_ROLL_SLOT_MS) % players.length;
     }
 
     const target = players[nextIndex]!;
 
     const result = await syncPlayer(target.id, syncAllOptions);
 
-    await prisma.cronSyncState.upsert({
-      where: { id: CRON_CURSOR_ID },
-      create: { id: CRON_CURSOR_ID, lastPlayerId: target.id },
-      update: { lastPlayerId: target.id },
-    });
+    if (cursorFromDb) {
+      try {
+        await prisma.cronSyncState.upsert({
+          where: { id: CRON_CURSOR_ID },
+          create: { id: CRON_CURSOR_ID, lastPlayerId: target.id },
+          update: { lastPlayerId: target.id },
+        });
+      } catch (e) {
+        if (!isCronSyncTableMissing(e)) throw e;
+        // Table still missing — sync succeeded; rotation uses time fallback until migrate deploy.
+      }
+    }
 
     revalidatePath("/dashboard");
     revalidatePath("/players");
