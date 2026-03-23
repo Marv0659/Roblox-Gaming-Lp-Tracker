@@ -264,6 +264,28 @@ export interface PlayerDetail {
     winrate: number | null;
     snapshotAt: Date;
   } | null;
+  currentRanks: {
+    soloDuo: {
+      queueType: string;
+      tier: string;
+      rank: string;
+      leaguePoints: number;
+      wins: number;
+      losses: number;
+      winrate: number | null;
+      snapshotAt: Date;
+    } | null;
+    flex: {
+      queueType: string;
+      tier: string;
+      rank: string;
+      leaguePoints: number;
+      wins: number;
+      losses: number;
+      winrate: number | null;
+      snapshotAt: Date;
+    } | null;
+  };
   recentSnapshots: Array<{
     queueType: string;
     tier: string;
@@ -380,7 +402,48 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
     .filter((s) => s.queueType === SOLO_QUEUE)
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const soloSnap = player.rankSnapshots.find((s) => s.queueType === SOLO_QUEUE);
-  const total = soloSnap ? soloSnap.wins + soloSnap.losses : 0;
+  const flexSnap = player.rankSnapshots.find((s) => s.queueType === FLEX_QUEUE);
+
+  function toCurrentRank(
+    snap:
+      | {
+          queueType: string;
+          tier: string;
+          rank: string;
+          leaguePoints: number;
+          wins: number;
+          losses: number;
+          createdAt: Date;
+        }
+      | undefined
+  ):
+    | {
+        queueType: string;
+        tier: string;
+        rank: string;
+        leaguePoints: number;
+        wins: number;
+        losses: number;
+        winrate: number | null;
+        snapshotAt: Date;
+      }
+    | null {
+    if (!snap) return null;
+    const total = snap.wins + snap.losses;
+    return {
+      queueType: snap.queueType,
+      tier: snap.tier,
+      rank: snap.rank,
+      leaguePoints: snap.leaguePoints,
+      wins: snap.wins,
+      losses: snap.losses,
+      winrate: total > 0 ? (snap.wins / total) * 100 : null,
+      snapshotAt: snap.createdAt,
+    };
+  }
+
+  const soloCurrentRank = toCurrentRank(soloSnap);
+  const flexCurrentRank = toCurrentRank(flexSnap);
 
   function lpChangeForMatch(gameStartAt: Date): number | null {
     const t = gameStartAt.getTime();
@@ -435,18 +498,11 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
     routingRegion: player.routingRegion,
     puuid: player.puuid,
     funStats,
-    currentRank: soloSnap
-      ? {
-          queueType: soloSnap.queueType,
-          tier: soloSnap.tier,
-          rank: soloSnap.rank,
-          leaguePoints: soloSnap.leaguePoints,
-          wins: soloSnap.wins,
-          losses: soloSnap.losses,
-          winrate: total > 0 ? (soloSnap.wins / total) * 100 : null,
-          snapshotAt: soloSnap.createdAt,
-        }
-      : null,
+    currentRank: soloCurrentRank,
+    currentRanks: {
+      soloDuo: soloCurrentRank,
+      flex: flexCurrentRank,
+    },
     recentSnapshots: player.rankSnapshots.map((s) => ({
       queueType: s.queueType,
       tier: s.tier,

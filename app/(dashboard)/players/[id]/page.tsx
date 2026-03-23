@@ -51,7 +51,8 @@ export default async function PlayerDetailPage({
   ]);
   if (!player) notFound();
 
-  const rank = player.currentRank;
+  const soloRank = player.currentRanks.soloDuo;
+  const flexRank = player.currentRanks.flex;
   const badges = getPlayerBadges(player.funStats, player.id, {
     beastestHolderId: beastestHolder?.id ?? null,
   });
@@ -114,23 +115,44 @@ export default async function PlayerDetailPage({
             <h2 className="text-lg font-semibold" title="Latest ranked tier, division, LP, and win/loss for this queue. Updated when you sync.">Current rank</h2>
           </CardHeader>
           <CardContent>
-            {rank ? (
-              <div className="flex flex-wrap gap-6">
-                <div>
-                  <span className={cn("text-xl font-bold", tierColor(rank.tier))}>
-                    {rank.tier} {rank.rank}
-                  </span>
-                  <span className="ml-2 text-muted-foreground" title="League Points: progress within the current division (0–100).">{rank.leaguePoints} LP</span>
-                </div>
-                <div className="text-muted-foreground">
-                  {rank.wins}W / {rank.losses}L
-                  {rank.winrate != null && (
-                    <span className="ml-2">({rank.winrate.toFixed(1)}% WR)</span>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Snapshot: {formatDateTime(rank.snapshotAt)}
-                </div>
+            {soloRank || flexRank ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  { label: "Solo/Duo", rank: soloRank },
+                  { label: "Flex", rank: flexRank },
+                ].map(({ label, rank }) => (
+                  <div key={label} className="rounded-md border border-border p-3">
+                    <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
+                      {label}
+                    </p>
+                    {rank ? (
+                      <>
+                        <div>
+                          <span className={cn("text-xl font-bold", tierColor(rank.tier))}>
+                            {rank.tier} {rank.rank}
+                          </span>
+                          <span
+                            className="ml-2 text-muted-foreground"
+                            title="League Points: progress within the current division (0–100)."
+                          >
+                            {rank.leaguePoints} LP
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          {rank.wins}W / {rank.losses}L
+                          {rank.winrate != null && (
+                            <span className="ml-2">({rank.winrate.toFixed(1)}% WR)</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Snapshot: {formatDateTime(rank.snapshotAt)}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No rank data yet.</p>
+                    )}
+                  </div>
+                ))}
               </div>
             ) : (
               <p className="text-muted-foreground">
