@@ -6,6 +6,8 @@
 
 import { prisma } from "@/lib/db";
 
+const SOLO_DUO_QUEUE_ID = 420;
+
 export interface DuoPlayer {
   id: string;
   gameName: string;
@@ -32,6 +34,11 @@ function pairKey(id1: string, id2: string): string {
  */
 export async function getDuoStats(): Promise<DuoPair[]> {
   const participants = await prisma.matchParticipant.findMany({
+    where: {
+      match: {
+        queueId: SOLO_DUO_QUEUE_ID,
+      },
+    },
     select: {
       matchId: true,
       win: true,
