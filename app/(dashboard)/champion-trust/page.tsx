@@ -120,7 +120,7 @@ export default async function ChampionTrustPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <CategoryCard
-          title="Fraud watch"
+          title="🚨 FRAUD WATCH 🚨"
           description="They play it a lot; results don’t back it up."
           rows={data.fraudulentComfortPicks}
           emptyMessage="No one has qualified yet. Need 5+ games on a top-3 most played champ with &lt;45% WR."
