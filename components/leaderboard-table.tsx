@@ -4,19 +4,23 @@ import { LeaderboardCard } from "./leaderboard-card";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Crown, Medal } from "lucide-react";
+import { FLEX_QUEUE } from "@/lib/leaderboard";
 
 interface Props {
   entries: LeaderboardEntry[];
+  queue: string;
 }
 
-export function LeaderboardTable({ entries }: Props) {
+export function LeaderboardTable({ entries, queue }: Props) {
+  const queueTitle = queue === FLEX_QUEUE ? "Flex 5v5 Leaderboard" : "Solo Queue Leaderboard";
+
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-col gap-2 border-b border-border bg-muted/30 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
         <div className="flex items-baseline gap-2">
           <Medal className="h-4 w-4 text-amber-400" aria-hidden />
           <h2 className="text-sm font-semibold tracking-wide">
-            Solo Queue Leaderboard
+            {queueTitle}
           </h2>
           <span className="text-xs text-muted-foreground">
             {entries.length} players
