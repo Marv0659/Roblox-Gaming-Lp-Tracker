@@ -31,7 +31,7 @@ function TrustRow({ row }: { row: GlobalChampionTrustRow }) {
   return (
     <Link
       href={`/players/${row.playerId}`}
-      className="flex flex-col gap-1 rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
+      className="grid gap-1 rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm transition-colors hover:bg-muted/40 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <span className="font-medium text-foreground">
@@ -41,10 +41,12 @@ function TrustRow({ row }: { row: GlobalChampionTrustRow }) {
         <span className="font-medium text-foreground">{row.championName}</span>
         <ChampionTrustBadge label={row.trustLabel} />
       </div>
-      <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:justify-end">
         <span className="tabular-nums">{row.games} games</span>
-        <span>{row.winrate.toFixed(0)}% WR</span>
-        <span className="text-xs">{row.shortReason}</span>
+        <span className="font-medium text-foreground">{row.winrate.toFixed(0)}% WR</span>
+        {row.recentWinrate != null && (
+          <span>Recent {row.recentWinrate.toFixed(0)}%</span>
+        )}
       </div>
     </Link>
   );
@@ -64,14 +66,14 @@ function CategoryCard({
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="shrink-0">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <h2 className="text-base font-semibold sm:text-lg">{title}</h2>
+        <p className="text-xs text-muted-foreground sm:text-sm">{description}</p>
       </CardHeader>
       <CardContent className="min-h-0 flex-1">
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">{emptyMessage}</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
             {rows.map((row, i) => (
               <li key={`${row.playerId}-${row.championName}-${i}`}>
                 <TrustRow row={row} />
@@ -81,14 +83,6 @@ function CategoryCard({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="col-span-full mb-1 mt-6 border-t border-border pt-6 text-xs font-medium uppercase tracking-wide text-muted-foreground first:mt-0 first:border-t-0 first:pt-0">
-      {children}
-    </h2>
   );
 }
 
@@ -102,40 +96,46 @@ export default async function ChampionTrustPage() {
           Champion trust leaderboard
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Data-driven fraud and trust rankings across the squad. Who has the
-          worst comfort picks, the best pocket picks, and the biggest coinflips.
+          Data-driven champion confidence across the squad. Stable picks get
+          trusted labels, volatile picks land in coinflip.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <SectionHeading>Fraud &amp; stubborn</SectionHeading>
+      <Card className="mb-6 border-border/70">
+        <CardContent className="grid gap-3 p-4 text-sm text-muted-foreground sm:grid-cols-3">
+          <div>
+            <p className="font-medium text-foreground">Stable (trusted)</p>
+            <p>8+ games, at least 52% WR, and no major recent WR swing.</p>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Volatile (coinflip)</p>
+            <p>Meaningful sample with mid WR (48-52%) or sharp recent swings.</p>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Insufficient</p>
+            <p>Used only for low samples (under 5 games), not high-volume champs.</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <CategoryCard
-          title="🚨 FRAUD WATCH 🚨"
+          title="Fraud watch"
           description="They play it a lot; results don’t back it up."
           rows={data.fraudulentComfortPicks}
           emptyMessage="No one has qualified yet. Need 5+ games on a top-3 most played champ with &lt;45% WR."
         />
         <CategoryCard
-          title="Worst stubborn picks"
-          description="Many games, poor results, still locking it in."
-          rows={data.worstStubbornPicks}
-          emptyMessage="No one has 5+ games with ≤40% WR on a champ yet."
-        />
-
-        <SectionHeading>Volatile</SectionHeading>
-        <CategoryCard
-          title="Biggest coinflips"
-          description="Could go either way; inconsistent performance."
+          title="Volatile picks"
+          description="Could go either way; inconsistent or swingy performance."
           rows={data.coinflipPicks}
           emptyMessage="No coinflip picks yet."
         />
-
-        <SectionHeading>Trust &amp; pocket</SectionHeading>
         <CategoryCard
           title="Most trusted"
           description="Strong sample size, reliably good performance."
           rows={data.mostTrustedPicks}
-          emptyMessage="No trusted picks yet. Need 5+ games and 58%+ WR with stable recent results."
+          emptyMessage="No trusted picks yet. Need 8+ games with stable positive results."
         />
         <CategoryCard
           title="Hidden pocket picks"

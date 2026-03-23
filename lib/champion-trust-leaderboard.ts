@@ -7,9 +7,9 @@ import { prisma } from "@/lib/db";
 import { computeChampionTrust, type ChampionTrustLabel, type ChampionTrustResult, type SampleQuality } from "@/lib/champion-trust";
 
 // ------------ Tunable (ranking & hidden pocket definition) ------------
-const MAX_ROWS_PER_CATEGORY = 10;
+const MAX_ROWS_PER_CATEGORY = 8;
 const MIN_GAMES_HIDDEN_POCKET = 3;
-const MAX_GAMES_HIDDEN_POCKET = 8;
+const MAX_GAMES_HIDDEN_POCKET = 7;
 const WINRATE_HIDDEN_POCKET = 60; // % — lower volume but strong
 // ---------------------------------------------------------------------
 
@@ -37,8 +37,6 @@ export interface GlobalChampionTrustLeaderboards {
   mostTrustedPicks: GlobalChampionTrustRow[];
   /** Biggest coinflips: volatile / inconsistent. */
   coinflipPicks: GlobalChampionTrustRow[];
-  /** Worst stubborn: many games, poor results, kept picking it. */
-  worstStubbornPicks: GlobalChampionTrustRow[];
   /** Hidden pocket: lower volume but surprisingly strong. */
   hiddenPocketPicks: GlobalChampionTrustRow[];
 }
@@ -106,13 +104,12 @@ export async function getGlobalChampionTrustLeaderboards(): Promise<GlobalChampi
         rankingScore = c.games * c.winrate; // more games + higher WR = more trusted
       } else if (c.trustLabel === "COINFLIP") {
         rankingScore = c.games; // biggest coinflips by volume
-      } else if (c.trustLabel === "DO_NOT_ALLOW") {
-        rankingScore = c.games * (100 - c.winrate); // worst stubborn = most games + bad WR
       }
       allRows.push(toRow(p.id, p.gameName, p.tagLine, c, rankingScore));
 
       // Hidden pocket: 3–8 games and >= 60% WR (separate list, no duplicate in allRows)
       if (
+        c.trustLabel === "POCKET_PICK" &&
         c.games >= MIN_GAMES_HIDDEN_POCKET &&
         c.games <= MAX_GAMES_HIDDEN_POCKET &&
         c.winrate >= WINRATE_HIDDEN_POCKET
@@ -141,11 +138,6 @@ export async function getGlobalChampionTrustLeaderboards(): Promise<GlobalChampi
     .sort((a, b) => b.rankingScore - a.rankingScore)
     .slice(0, MAX_ROWS_PER_CATEGORY);
 
-  const worstStubbornPicks = allRows
-    .filter((r) => r.trustLabel === "DO_NOT_ALLOW")
-    .sort((a, b) => b.rankingScore - a.rankingScore)
-    .slice(0, MAX_ROWS_PER_CATEGORY);
-
   const hiddenPocketPicks = hiddenPocketRows
     .sort((a, b) => b.rankingScore - a.rankingScore)
     .slice(0, MAX_ROWS_PER_CATEGORY);
@@ -154,7 +146,6 @@ export async function getGlobalChampionTrustLeaderboards(): Promise<GlobalChampi
     fraudulentComfortPicks,
     mostTrustedPicks,
     coinflipPicks,
-    worstStubbornPicks,
     hiddenPocketPicks,
   };
 }

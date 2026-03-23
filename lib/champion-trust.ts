@@ -9,13 +9,14 @@ import { withoutRemakes } from "@/lib/derived-stats";
 
 // ------------ Tunable thresholds (easy to tweak) ------------
 const MIN_GAMES_TO_SHOW = 3; // Below this we omit the champion from results
-const MIN_GAMES_TRUSTED = 5;
-const MIN_GAMES_MEANINGFUL = 5; // For DO_NOT_ALLOW / FAKE_COMFORT
-const WINRATE_TRUSTED = 58; // % — "genuinely strong"
+const MIN_GAMES_MEANINGFUL = 5; // Minimum sample to avoid "insufficient data"
+const MIN_GAMES_TRUSTED = 8;
+const WINRATE_TRUSTED = 52; // % — stable positive over enough games
 const WINRATE_DO_NOT_ALLOW = 40; // % — clearly bad idea
 const WINRATE_FAKE_COMFORT = 45; // % — plays a lot but poor results
-const WINRATE_COINFLIP_HIGH = 56; // Below TRUSTED, above = mixed
-const WINRATE_COINFLIP_LOW = 42;
+const WINRATE_COINFLIP_HIGH = 52; // Volatile middle band
+const WINRATE_COINFLIP_LOW = 48;
+const VOLATILE_SWING_DELTA = 15; // recent WR deviates this much from overall WR
 const TOP_N_MOST_PLAYED_FOR_FAKE = 3; // Among top N by games + bad WR = fake comfort
 const RECENT_GAMES_N = 5; // Last N games on champ for "recent" winrate
 const MIN_RECENT_GAMES = 3; // Need at least this many for recentWinrate
@@ -46,7 +47,14 @@ export interface ChampionTrustResult {
 }
 
 function normalizeChamp(name: string | null): string {
-  return (name?.trim() && name) || "Unknown";
+  const trimmed = name?.trim();
+  if (!trimmed) return "unknown";
+  return trimmed.toLowerCase();
+}
+
+function displayChampName(matches: MatchParticipantInput[]): string {
+  const raw = matches.find((m) => m.championName?.trim())?.championName?.trim();
+  return raw || "Unknown";
 }
 
 /** KDA = (kills + assists) / max(1, deaths) to avoid div by zero. */
@@ -67,7 +75,8 @@ function buildPerChampionStats(
     wins: number;
     winsRecent: number;
     gamesRecent: number;
-    kdaSum: number;
+      kdaSum: number;
+      displayName: string;
   }
 > {
   const byChamp = new Map<
@@ -89,6 +98,7 @@ function buildPerChampionStats(
       winsRecent: number;
       gamesRecent: number;
       kdaSum: number;
+      displayName: string;
     }
   >();
   for (const [name, { list }] of byChamp.entries()) {
@@ -107,9 +117,19 @@ function buildPerChampionStats(
       winsRecent,
       gamesRecent,
       kdaSum,
+      displayName: displayChampName(list),
     });
   }
   return out;
+}
+
+function isVolatile(winrate: number, recentWinrate: number | null): boolean {
+  const inMiddleBand =
+    winrate >= WINRATE_COINFLIP_LOW && winrate <= WINRATE_COINFLIP_HIGH;
+  const hasRecentSwing =
+    recentWinrate != null &&
+    Math.abs(recentWinrate - winrate) >= VOLATILE_SWING_DELTA;
+  return inMiddleBand || hasRecentSwing;
 }
 
 function sampleQuality(games: number): SampleQuality {
@@ -169,28 +189,22 @@ export function computeChampionTrust(
       trustLabel = "DO_NOT_ALLOW";
       trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR — do not allow`;
     }
-    // TRUSTED: enough games, strong and stable
+    // TRUSTED: enough games, positive WR, and not volatile.
     else if (
       s.games >= MIN_GAMES_TRUSTED &&
       winrate >= WINRATE_TRUSTED &&
-      (recentWinrate == null || recentWinrate >= WINRATE_COINFLIP_LOW)
+      !isVolatile(winrate, recentWinrate)
     ) {
       trustLabel = "TRUSTED";
-      trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR, stable`;
+      trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR — stable and reliable`;
     }
-    // COINFLIP: winrate in the mixed/unreliable band (42–56%) — actually inconsistent
-    else if (
-      s.games >= MIN_GAMES_TO_SHOW &&
-      winrate > WINRATE_COINFLIP_LOW &&
-      winrate < WINRATE_COINFLIP_HIGH
-    ) {
+    // COINFLIP: meaningful sample but volatile/mixed profile.
+    else if (s.games >= MIN_GAMES_MEANINGFUL && isVolatile(winrate, recentWinrate)) {
       trustLabel = "COINFLIP";
-      trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR — mixed results`;
-    }
-    // Enough games but not trusted (e.g. 5+ games, 50% WR): inconsistent
-    else if (s.games >= MIN_GAMES_MEANINGFUL && winrate < WINRATE_TRUSTED) {
-      trustLabel = "COINFLIP";
-      trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR — inconsistent`;
+      trustReason =
+        recentWinrate != null && Math.abs(recentWinrate - winrate) >= VOLATILE_SWING_DELTA
+          ? `${s.games} games, ${winrate.toFixed(0)}% WR — volatile recent swing`
+          : `${s.games} games, ${winrate.toFixed(0)}% WR — mixed results`;
     }
     // Small sample, high WR: pocket pick energy — fun label instead of "insufficient data"
     else if (
@@ -201,14 +215,19 @@ export function computeChampionTrust(
       trustLabel = "POCKET_PICK";
       trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR — pocket pick energy?`;
     }
-    // Other small sample or edge cases: too early to call
+    // Meaningful sample but not strongly good or strongly bad = uncertain.
+    else if (s.games >= MIN_GAMES_MEANINGFUL) {
+      trustLabel = "COINFLIP";
+      trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR — not stable enough yet`;
+    }
+    // Small sample edge cases: too early to call.
     else {
       trustLabel = "INSUFFICIENT_DATA";
       trustReason = `${s.games} games, ${winrate.toFixed(0)}% WR — too early to call`;
     }
 
     results.push({
-      championName,
+      championName: s.displayName,
       games: s.games,
       wins: s.wins,
       losses,
