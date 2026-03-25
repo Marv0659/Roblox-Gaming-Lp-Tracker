@@ -128,7 +128,7 @@ function isVolatile(winrate: number, recentWinrate: number | null): boolean {
     winrate >= WINRATE_COINFLIP_LOW && winrate <= WINRATE_COINFLIP_HIGH;
   const hasRecentSwing =
     recentWinrate != null &&
-    Math.abs(recentWinrate - winrate) >= VOLATILE_SWING_DELTA;
+    winrate - recentWinrate >= VOLATILE_SWING_DELTA;
   return inMiddleBand || hasRecentSwing;
 }
 
