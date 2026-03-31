@@ -31,9 +31,10 @@ function queueLabel(queueId: number): string {
 }
 
 export function RecentMatchesTabs({ matches }: { matches: RecentMatch[] }) {
-  const [tab, setTab] = useState<"all" | "flex">("all");
+  const [tab, setTab] = useState<"all" | "Solo/Duo" | "flex">("all");
 
   const displayed = useMemo(() => {
+    if (tab === "Solo/Duo") return matches.filter((m) => m.queueId === 420);
     if (tab === "flex") return matches.filter((m) => m.queueId === 440);
     return matches;
   }, [matches, tab]);
@@ -54,6 +55,17 @@ export function RecentMatchesTabs({ matches }: { matches: RecentMatch[] }) {
         </button>
         <button
           type="button"
+          onClick={() => setTab("Solo/Duo")}
+          className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+            tab === "Solo/Duo"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          }`}
+        >
+          Solo/Duo
+        </button>
+        <button
+          type="button"
           onClick={() => setTab("flex")}
           className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
             tab === "flex"
@@ -67,7 +79,9 @@ export function RecentMatchesTabs({ matches }: { matches: RecentMatch[] }) {
 
       {displayed.length === 0 ? (
         <p className="text-muted-foreground">
-          {tab === "flex"
+          {tab === "Solo/Duo"
+            ? "No stored Solo/Duo games for this player yet."
+            : tab === "flex"
             ? "No stored Flex games for this player yet."
             : "No matches stored. Sync to fetch recent ranked games."}
         </p>

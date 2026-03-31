@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getLeaderboard, getLeaderboardRegions, getRecentMatchFeed } from "@/lib/leaderboard";
+import { getLeaderboard, getLeaderboardRegions, getRecentMatchFeed, SOLO_QUEUE } from "@/lib/leaderboard";
 import { getBeastestHolder, BEASTEST_TOOLTIP } from "@/lib/beastest";
 import { LeaderboardTable } from "@/components/leaderboard-table";
 import { RecentMatchFeed } from "@/components/recent-match-feed";
@@ -33,9 +33,10 @@ export default async function DashboardPage({
   searchParams: Promise<{ region?: string; queue?: string }>;
 }) {
   const params = await searchParams;
+  const selectedQueue = params.queue || SOLO_QUEUE;
   const filters = {
     region: params.region || undefined,
-    queue: params.queue || undefined,
+    queue: selectedQueue,
   };
   const [entries, regions, recentMatches, beastestHolder] = await Promise.all([
     getLeaderboard(filters),
@@ -175,7 +176,7 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
       ) : (
-        <LeaderboardTable entries={entries} />
+        <LeaderboardTable entries={entries} queue={selectedQueue} />
       )}
     </div>
   );
