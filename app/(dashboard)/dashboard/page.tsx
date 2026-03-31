@@ -5,6 +5,7 @@ import { LeaderboardTable } from "@/components/leaderboard-table";
 import { RecentMatchFeed } from "@/components/recent-match-feed";
 import { RankBadge } from "@/components/rank-badge";
 import { LeaderboardFilters } from "./leaderboard-filters";
+import { SyncAllButton } from "../players/sync-all-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Crown, Users } from "lucide-react";
@@ -64,7 +65,10 @@ export default async function DashboardPage({
             Live ranked snapshot from your tracked players.
           </p>
         </div>
-        <LeaderboardFilters regions={regions} />
+        <div className="flex flex-wrap items-end gap-3">
+          {totalPlayers > 0 && <SyncAllButton />}
+          <LeaderboardFilters regions={regions} />
+        </div>
       </div>
 
       {totalPlayers > 0 && (

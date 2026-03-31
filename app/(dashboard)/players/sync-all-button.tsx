@@ -29,7 +29,7 @@ export function SyncAllButton() {
 
   return (
     <Button type="button" variant="secondary" onClick={handleSyncAll} disabled={pending}>
-      {pending ? "Syncing all…" : "Sync all"}
+      {pending ? "Updating Leaderboard..." : "Update Leaderboard"}
     </Button>
   );
 }

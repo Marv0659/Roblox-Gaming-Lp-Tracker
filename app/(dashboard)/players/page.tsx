@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { getTrackedPlayers } from "@/app/actions/players";
 import { AddPlayerForm } from "./add-player-form";
-import { SyncAllButton } from "./sync-all-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ export default async function PlayersPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          {players.length > 0 && <SyncAllButton />}
           <AddPlayerForm />
         </div>
       </div>
