@@ -7,9 +7,12 @@
 import { prisma } from "@/lib/db";
 import { isRemake } from "@/lib/derived-stats";
 import { getQueueRecommendationForPlayer } from "@/lib/queue-recommendation";
-import { getPlayerDetail } from "@/lib/leaderboard";
-
-const SOLO_QUEUE = "RANKED_SOLO_5x5";
+import {
+  getPlayerDetail,
+  RANKED_QUEUE_ID_BY_TYPE,
+  SOLO_QUEUE,
+  type RankedQueueType,
+} from "@/lib/leaderboard";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /** Reusable time window for recap (inclusive). */
@@ -110,7 +113,7 @@ const MIN_GAMES_FOR_WINRATE = 6;
  */
 async function getPlayerStatsForWindow(
   window: RecapWindow,
-  queueType: string = SOLO_QUEUE
+  queueType: RankedQueueType = SOLO_QUEUE
 ): Promise<{ playerStats: PlayerWindowStats[]; stinkerOfTheWeek: StinkerOfTheWeek }> {
   const players = await prisma.trackedPlayer.findMany({
     select: { id: true, gameName: true, tagLine: true },
@@ -138,6 +141,7 @@ async function getPlayerStatsForWindow(
         trackedPlayerId: { in: playerIds },
         match: {
           gameStartAt: { gte: window.start, lte: window.end },
+          queueId: RANKED_QUEUE_ID_BY_TYPE[queueType],
         },
       },
       include: {
@@ -427,9 +431,11 @@ function buildRecapFromStats(
 /**
  * Returns the weekly recap (last 7 days) from DB data only.
  */
-export async function getWeeklyRecap(): Promise<WeeklyRecapData> {
+export async function getWeeklyRecap(
+  queueType: RankedQueueType = SOLO_QUEUE
+): Promise<WeeklyRecapData> {
   const window = lastNDays(7);
-  const { playerStats, stinkerOfTheWeek } = await getPlayerStatsForWindow(window, SOLO_QUEUE);
+  const { playerStats, stinkerOfTheWeek } = await getPlayerStatsForWindow(window, queueType);
   const base = buildRecapFromStats(playerStats, window, true, stinkerOfTheWeek);
 
   // Optional best-effort queue recommendations for all tracked players in this window.
@@ -469,12 +475,13 @@ export async function getWeeklyRecap(): Promise<WeeklyRecapData> {
  */
 export async function getRecapForWindow(
   window: RecapWindow,
-  options: { isWeekly?: boolean } = {}
+  options: { isWeekly?: boolean; queueType?: RankedQueueType } = {}
 ): Promise<WeeklyRecapData> {
   const isWeekly =
     options.isWeekly ??
     (window.end.getTime() - window.start.getTime() <= 8 * MS_PER_DAY);
-  const { playerStats, stinkerOfTheWeek } = await getPlayerStatsForWindow(window, SOLO_QUEUE);
+  const queueType = options.queueType ?? SOLO_QUEUE;
+  const { playerStats, stinkerOfTheWeek } = await getPlayerStatsForWindow(window, queueType);
   return buildRecapFromStats(playerStats, window, isWeekly, stinkerOfTheWeek);
 }
 

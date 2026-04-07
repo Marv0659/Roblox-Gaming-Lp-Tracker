@@ -2,8 +2,25 @@ import Link from "next/link";
 import { getWeeklyRecap } from "@/lib/recap";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  FLEX_QUEUE,
+  QUEUE_LABEL_BY_TYPE,
+  SOLO_QUEUE,
+  type RankedQueueType,
+} from "@/lib/leaderboard";
 
 export const dynamic = "force-dynamic";
+
+type QueuePreset = "solo" | "flex";
+
+const QUEUE_PRESET_TO_TYPE: Record<QueuePreset, RankedQueueType> = {
+  solo: SOLO_QUEUE,
+  flex: FLEX_QUEUE,
+};
+
+function parseQueuePreset(value?: string): QueuePreset {
+  return value === "flex" ? "flex" : "solo";
+}
 
 function formatWindow(window: { start: Date; end: Date }): string {
   const start = window.start.toLocaleDateString("en-GB", {
@@ -40,8 +57,15 @@ function PlayerLink({
   );
 }
 
-export default async function RecapPage() {
-  const recap = await getWeeklyRecap();
+export default async function RecapPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ queue?: string }>;
+}) {
+  const params = await searchParams;
+  const queuePreset = parseQueuePreset(params.queue);
+  const queueType = QUEUE_PRESET_TO_TYPE[queuePreset];
+  const recap = await getWeeklyRecap(queueType);
 
   const topGrinders = [...recap.playerStats]
     .filter((p) => p.gamesPlayed > 0)
@@ -55,8 +79,22 @@ export default async function RecapPage() {
           Weekly recap
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {formatWindow(recap.window)} · Solo queue, from synced data only
+          {formatWindow(recap.window)} · {QUEUE_LABEL_BY_TYPE[queueType]} queue, from synced data only
         </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href="/recap?queue=solo"
+            className={`rounded-md px-2 py-1 text-sm font-medium transition-colors ${queuePreset === "solo" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            Solo / Duo
+          </Link>
+          <Link
+            href="/recap?queue=flex"
+            className={`rounded-md px-2 py-1 text-sm font-medium transition-colors ${queuePreset === "flex" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            Flex 5v5
+          </Link>
+        </div>
       </div>
 
       {recap.playerStats.length === 0 ? (
@@ -69,7 +107,7 @@ export default async function RecapPage() {
           </CardContent>
         </Card>
       ) : (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {recap.biggestLpGainer && (
             <Card className="order-1 lg:order-1">
               <CardHeader className="pb-2">

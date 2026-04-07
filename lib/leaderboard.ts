@@ -7,6 +7,15 @@ import { prisma } from "@/lib/db";
 
 export const SOLO_QUEUE = "RANKED_SOLO_5x5";
 export const FLEX_QUEUE = "RANKED_FLEX_SR";
+export type RankedQueueType = typeof SOLO_QUEUE | typeof FLEX_QUEUE;
+export const RANKED_QUEUE_ID_BY_TYPE: Record<RankedQueueType, number> = {
+  [SOLO_QUEUE]: 420,
+  [FLEX_QUEUE]: 440,
+};
+export const QUEUE_LABEL_BY_TYPE: Record<RankedQueueType, string> = {
+  [SOLO_QUEUE]: "Solo / Duo",
+  [FLEX_QUEUE]: "Flex 5v5",
+};
 export const QUEUE_OPTIONS = [
   { value: SOLO_QUEUE, label: "Solo / Duo" },
   { value: FLEX_QUEUE, label: "Flex 5v5" },

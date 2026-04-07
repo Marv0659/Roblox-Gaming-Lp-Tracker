@@ -6,8 +6,11 @@
 
 import { prisma } from "@/lib/db";
 import { isRemake } from "@/lib/derived-stats";
-
-const SOLO_QUEUE = "RANKED_SOLO_5x5";
+import {
+  RANKED_QUEUE_ID_BY_TYPE,
+  SOLO_QUEUE,
+  type RankedQueueType,
+} from "@/lib/leaderboard";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // ------------ Session window ------------
@@ -151,7 +154,7 @@ interface PlayerSessionInput {
 
 async function getSessionData(
   window: SessionWindow,
-  queueType: string
+  queueType: RankedQueueType
 ): Promise<PlayerSessionInput[]> {
   const players = await prisma.trackedPlayer.findMany({
     select: { id: true, gameName: true, tagLine: true },
@@ -179,6 +182,7 @@ async function getSessionData(
         trackedPlayerId: { in: playerIds },
         match: {
           gameStartAt: { gte: window.start, lte: window.end },
+          queueId: RANKED_QUEUE_ID_BY_TYPE[queueType],
         },
       },
       include: {
@@ -452,9 +456,10 @@ function buildRecap(input: PlayerSessionInput[], window: SessionWindow): Session
  * All data from DB only; no Riot API.
  */
 export async function getSessionRecap(
-  preset: SessionWindowPreset = "last24h"
+  preset: SessionWindowPreset = "last24h",
+  queueType: RankedQueueType = SOLO_QUEUE
 ): Promise<SessionRecapData> {
   const window = getSessionWindow(preset);
-  const input = await getSessionData(window, SOLO_QUEUE);
+  const input = await getSessionData(window, queueType);
   return buildRecap(input, window);
 }

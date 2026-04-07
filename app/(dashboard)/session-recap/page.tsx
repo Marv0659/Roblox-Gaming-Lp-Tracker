@@ -6,8 +6,25 @@ import {
 } from "@/lib/session-recap";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  FLEX_QUEUE,
+  QUEUE_LABEL_BY_TYPE,
+  SOLO_QUEUE,
+  type RankedQueueType,
+} from "@/lib/leaderboard";
 
 export const dynamic = "force-dynamic";
+
+type QueuePreset = "solo" | "flex";
+
+const QUEUE_PRESET_TO_TYPE: Record<QueuePreset, RankedQueueType> = {
+  solo: SOLO_QUEUE,
+  flex: FLEX_QUEUE,
+};
+
+function parseQueuePreset(value?: string): QueuePreset {
+  return value === "flex" ? "flex" : "solo";
+}
 
 function formatSessionWindow(preset: SessionWindowPreset): string {
   if (preset === "today") return "Today (since midnight)";
@@ -263,12 +280,14 @@ function SessionRecapContent({ recap }: { recap: SessionRecapData }) {
 export default async function SessionRecapPage({
   searchParams,
 }: {
-  searchParams: Promise<{ window?: string }>;
+  searchParams: Promise<{ window?: string; queue?: string }>;
 }) {
   const params = await searchParams;
   const preset: SessionWindowPreset =
     params.window === "today" ? "today" : "last24h";
-  const recap = await getSessionRecap(preset);
+  const queuePreset = parseQueuePreset(params.queue);
+  const queueType = QUEUE_PRESET_TO_TYPE[queuePreset];
+  const recap = await getSessionRecap(preset, queueType);
   const windowLabel = formatSessionWindow(preset);
   const timeRange = formatTimeRange(recap.window.start, recap.window.end);
 
@@ -279,20 +298,32 @@ export default async function SessionRecapPage({
           Session recap
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {windowLabel} · {timeRange} · Solo queue, from synced data only
+          {windowLabel} · {timeRange} · {QUEUE_LABEL_BY_TYPE[queueType]} queue, from synced data only
         </p>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex flex-wrap gap-2">
           <Link
-            href="/session-recap?window=last24h"
+            href={`/session-recap?window=last24h&queue=${queuePreset}`}
             className={`rounded-md px-2 py-1 text-sm font-medium transition-colors ${preset === "last24h" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
             Last 24h
           </Link>
           <Link
-            href="/session-recap?window=today"
+            href={`/session-recap?window=today&queue=${queuePreset}`}
             className={`rounded-md px-2 py-1 text-sm font-medium transition-colors ${preset === "today" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
             Today
+          </Link>
+          <Link
+            href={`/session-recap?window=${preset}&queue=solo`}
+            className={`rounded-md px-2 py-1 text-sm font-medium transition-colors ${queuePreset === "solo" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            Solo / Duo
+          </Link>
+          <Link
+            href={`/session-recap?window=${preset}&queue=flex`}
+            className={`rounded-md px-2 py-1 text-sm font-medium transition-colors ${queuePreset === "flex" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            Flex 5v5
           </Link>
         </div>
       </div>
