@@ -19,7 +19,7 @@ import {
   associateMatchesWithDeltas,
   type SnapshotLike,
 } from "@/lib/lp-history";
-import { rankToScore, type RankLike } from "@/lib/rank-utils";
+import { rankToLadderLp, rankToScore, type RankLike } from "@/lib/rank-utils";
 import { getDuoStats, type DuoPair } from "@/lib/duo-stats";
 import {
   buildPlayerNarrative,
@@ -363,6 +363,8 @@ function buildPlayer(
 
   const snapInputs: RankSnapshotInput[] = raw.rankSnapshots.map((s) => ({
     queueType: s.queueType,
+    tier: s.tier,
+    rank: s.rank,
     leaguePoints: s.leaguePoints,
     createdAt: s.createdAt,
   }));
@@ -386,7 +388,9 @@ function buildPlayer(
   let grossGained = 0;
   let grossLost = 0;
   if (snaps.length >= 2) {
-    netLp = snaps[snaps.length - 1].leaguePoints - snaps[0].leaguePoints;
+    netLp =
+      rankToLadderLp(snaps[snaps.length - 1]) -
+      rankToLadderLp(snaps[0]);
     const deltas = deriveSnapshotDeltas(snaps, SOLO_QUEUE);
     const matchTimes = raw.matchParts.map((m) => ({ gameStartAt: m.gameStartAt }));
     associateMatchesWithDeltas(deltas, matchTimes);

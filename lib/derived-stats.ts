@@ -4,10 +4,14 @@
  * Guards for missing or low-sample data; safe to extend.
  */
 
+import { rankToLadderLp } from "@/lib/rank-utils";
+
 // ---- Input types (minimal shapes; callers map from Prisma) ----
 
 export interface RankSnapshotInput {
   queueType: string;
+  tier?: string;
+  rank?: string;
   leaguePoints: number;
   createdAt: Date;
 }
@@ -94,9 +98,20 @@ export function lpGainedInWindow(
     .filter((s) => s.queueType === queueType && s.createdAt.getTime() >= since.getTime())
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   if (inWindow.length < 2) return 0;
-  return (
-    inWindow[inWindow.length - 1].leaguePoints - inWindow[0].leaguePoints
-  );
+
+  const first = inWindow[0];
+  const last = inWindow[inWindow.length - 1];
+  const hasRankMeta =
+    typeof first.tier === "string" &&
+    typeof first.rank === "string" &&
+    typeof last.tier === "string" &&
+    typeof last.rank === "string";
+
+  if (!hasRankMeta) {
+    return last.leaguePoints - first.leaguePoints;
+  }
+
+  return rankToLadderLp(last) - rankToLadderLp(first);
 }
 
 // ---- Winrate in last N games ----

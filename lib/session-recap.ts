@@ -11,6 +11,7 @@ import {
   SOLO_QUEUE,
   type RankedQueueType,
 } from "@/lib/leaderboard";
+import { rankToLadderLp } from "@/lib/rank-utils";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // ------------ Session window ------------
@@ -173,6 +174,8 @@ async function getSessionData(
       orderBy: { createdAt: "asc" },
       select: {
         trackedPlayerId: true,
+        tier: true,
+        rank: true,
         leaguePoints: true,
         createdAt: true,
       },
@@ -198,10 +201,18 @@ async function getSessionData(
     }),
   ]);
 
-  const snapsByPlayer = new Map<string, { leaguePoints: number; createdAt: Date }[]>();
+  const snapsByPlayer = new Map<
+    string,
+    { tier: string; rank: string; leaguePoints: number; createdAt: Date }[]
+  >();
   for (const s of snapshots) {
     const list = snapsByPlayer.get(s.trackedPlayerId) ?? [];
-    list.push({ leaguePoints: s.leaguePoints, createdAt: s.createdAt });
+    list.push({
+      tier: s.tier,
+      rank: s.rank,
+      leaguePoints: s.leaguePoints,
+      createdAt: s.createdAt,
+    });
     snapsByPlayer.set(s.trackedPlayerId, list);
   }
 
@@ -213,7 +224,7 @@ async function getSessionData(
     );
     let lpChange: number | null = null;
     if (snaps.length >= 2) {
-      lpChange = snaps[snaps.length - 1].leaguePoints - snaps[0].leaguePoints;
+      lpChange = rankToLadderLp(snaps[snaps.length - 1]) - rankToLadderLp(snaps[0]);
     }
 
     const playerParts = participants.filter((p) => p.trackedPlayerId === player.id);

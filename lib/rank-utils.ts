@@ -9,6 +9,10 @@ export interface RankLike {
   leaguePoints?: number;
 }
 
+const LP_PER_DIVISION = 100;
+const DIVISIONS_PER_TIER = 4;
+const LP_PER_TIER = LP_PER_DIVISION * DIVISIONS_PER_TIER;
+
 // Tier order (lowest = worst). Matches leaderboard.ts.
 const TIER_ORDER: Record<string, number> = {
   IRON: 0,
@@ -31,6 +35,25 @@ const RANK_ORDER: Record<string, number> = {
   I: 3,
   "": 4, // Master+ has no division
 };
+
+/**
+ * Converts tier/division/LP to a continuous ladder value.
+ * Each division spans 100 points so promotions don't look like large drops.
+ */
+export function rankToLadderLp(r: RankLike): number {
+  const tier = (r.tier ?? "").toUpperCase();
+  const rank = (r.rank ?? "").toUpperCase();
+  const tierIndex = TIER_ORDER[tier] ?? -1;
+  const lp = Math.max(0, Math.min(100, r.leaguePoints ?? 0));
+
+  if (tierIndex < 0) return lp;
+
+  const divisionIndex = rank in RANK_ORDER ? RANK_ORDER[rank]! : 0;
+  // Master+ has no visible division; treat as top division within tier.
+  const normalizedDivision = tierIndex >= TIER_ORDER.MASTER ? DIVISIONS_PER_TIER : Math.max(0, Math.min(3, divisionIndex));
+
+  return tierIndex * LP_PER_TIER + normalizedDivision * LP_PER_DIVISION + lp;
+}
 
 /**
  * Converts tier + rank + optional LP into a single comparable score.

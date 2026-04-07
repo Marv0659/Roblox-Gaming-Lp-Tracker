@@ -248,6 +248,7 @@ import {
   type LpHistoryEntry,
 } from "@/lib/lp-history";
 import { computeChampionTrust, type ChampionTrustResult } from "@/lib/champion-trust";
+import { rankToLadderLp } from "@/lib/rank-utils";
 
 /** Player fun/social stats; computed by derived-stats layer from existing DB data. */
 export type PlayerFunStats = DerivedPlayerStats;
@@ -459,13 +460,15 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
     const before = [...soloSnapshots].filter((s) => s.createdAt.getTime() < t).pop();
     const after = soloSnapshots.find((s) => s.createdAt.getTime() > t);
     if (!before || !after) return null;
-    return after.leaguePoints - before.leaguePoints;
+    return rankToLadderLp(after) - rankToLadderLp(before);
   }
 
   const funStats = computeDerivedPlayerStats(
     {
       rankSnapshots: player.rankSnapshots.map((s) => ({
         queueType: s.queueType,
+        tier: s.tier,
+        rank: s.rank,
         leaguePoints: s.leaguePoints,
         createdAt: s.createdAt,
       })),

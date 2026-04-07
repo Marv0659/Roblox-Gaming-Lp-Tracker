@@ -4,6 +4,8 @@
  * Use for: LP charts, recent LP feed, profile pages, leaderboard stats.
  */
 
+import { rankToLadderLp } from "@/lib/rank-utils";
+
 // ---- Input types (minimal; callers map from Prisma) ----
 
 export interface SnapshotLike {
@@ -79,7 +81,7 @@ export function deriveSnapshotDeltas(
     deltas.push({
       from,
       to,
-      lpDelta: to.leaguePoints - from.leaguePoints,
+      lpDelta: rankToLadderLp(to) - rankToLadderLp(from),
       winsDelta: to.wins - from.wins,
       lossesDelta: to.losses - from.losses,
       timeMs: to.createdAt.getTime() - from.createdAt.getTime(),

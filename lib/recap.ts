@@ -13,6 +13,7 @@ import {
   SOLO_QUEUE,
   type RankedQueueType,
 } from "@/lib/leaderboard";
+import { rankToLadderLp } from "@/lib/rank-utils";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /** Reusable time window for recap (inclusive). */
@@ -132,6 +133,8 @@ async function getPlayerStatsForWindow(
       orderBy: { createdAt: "asc" },
       select: {
         trackedPlayerId: true,
+        tier: true,
+        rank: true,
         leaguePoints: true,
         createdAt: true,
       },
@@ -153,10 +156,18 @@ async function getPlayerStatsForWindow(
     }),
   ]);
 
-  const snapshotsByPlayer = new Map<string, { leaguePoints: number; createdAt: Date }[]>();
+  const snapshotsByPlayer = new Map<
+    string,
+    { tier: string; rank: string; leaguePoints: number; createdAt: Date }[]
+  >();
   for (const s of snapshots) {
     const list = snapshotsByPlayer.get(s.trackedPlayerId) ?? [];
-    list.push({ leaguePoints: s.leaguePoints, createdAt: s.createdAt });
+    list.push({
+      tier: s.tier,
+      rank: s.rank,
+      leaguePoints: s.leaguePoints,
+      createdAt: s.createdAt,
+    });
     snapshotsByPlayer.set(s.trackedPlayerId, list);
   }
 
@@ -191,8 +202,7 @@ async function getPlayerStatsForWindow(
 
     let lpChange: number | null = null;
     if (snaps.length >= 2) {
-      lpChange =
-        snaps[snaps.length - 1].leaguePoints - snaps[0].leaguePoints;
+      lpChange = rankToLadderLp(snaps[snaps.length - 1]) - rankToLadderLp(snaps[0]);
     }
 
     const gamesPlayed = matches.length;
