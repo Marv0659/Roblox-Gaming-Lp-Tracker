@@ -11,6 +11,7 @@ import {
   computeChampionStats,
   totalGamesInWindow,
   getBestChampionByWinrate,
+  withoutRemakes,
   type RankSnapshotInput,
   type MatchParticipantInput,
 } from "@/lib/derived-stats";
@@ -133,6 +134,8 @@ export function computeHallOfFame(
       tagLine: p.tagLine,
     };
 
+    const matches = withoutRemakes(p.matches);
+
     const lpChange7d = lpGainedInWindow(p.rankSnapshots, SOLO_QUEUE, since7d);
     if (lpChange7d > 0) {
       const snapshotsInWindow = p.rankSnapshots.filter(
@@ -148,18 +151,18 @@ export function computeHallOfFame(
       }
     }
 
-    const wrRecent = winrateLastN(p.matches, RECENT_GAMES_N);
-    if (wrRecent !== null && p.matches.length >= MIN_GAMES_FOR_WINRATE_OR_DEATHS) {
+    const wrRecent = winrateLastN(matches, RECENT_GAMES_N);
+    if (wrRecent !== null && matches.length >= MIN_GAMES_FOR_WINRATE_OR_DEATHS) {
       bestRecentWinrate.push({
         player: playerRef,
         value: wrRecent,
         label: `${wrRecent.toFixed(1)}% WR`,
-        detail: `last ${Math.min(RECENT_GAMES_N, p.matches.length)} games`,
+        detail: `last ${Math.min(RECENT_GAMES_N, matches.length)} games`,
       });
     }
 
     const avgDeaths = averageDeathsLastN(
-      p.matches,
+      matches,
       RECENT_GAMES_N,
       MIN_GAMES_FOR_WINRATE_OR_DEATHS
     );
@@ -168,12 +171,12 @@ export function computeHallOfFame(
         player: playerRef,
         value: avgDeaths,
         label: `${avgDeaths.toFixed(1)} deaths/game`,
-        detail: `last ${Math.min(RECENT_GAMES_N, p.matches.length)} games`,
+        detail: `last ${Math.min(RECENT_GAMES_N, matches.length)} games`,
       });
     }
 
-    const games7d = totalGamesInWindow(p.matches, since7d);
-    const wr7d = winrateInWindow(p.matches, since7d);
+    const games7d = totalGamesInWindow(matches, since7d);
+    const wr7d = winrateInWindow(matches, since7d);
     if (
       games7d >= MIN_GAMES_FOR_GRIND &&
       wr7d !== null &&
@@ -198,7 +201,7 @@ export function computeHallOfFame(
     }
 
     const mastery = bestChampionMastery(
-      p.matches,
+      matches,
       MIN_GAMES_FOR_CHAMP_MASTERY,
       CHAMP_WINRATE_MASTERY_THRESHOLD
     );

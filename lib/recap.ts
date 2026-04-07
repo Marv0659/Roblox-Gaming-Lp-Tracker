@@ -5,6 +5,7 @@
  */
 
 import { prisma } from "@/lib/db";
+import { isRemake } from "@/lib/derived-stats";
 import { getQueueRecommendationForPlayer } from "@/lib/queue-recommendation";
 import { getPlayerDetail } from "@/lib/leaderboard";
 
@@ -178,7 +179,9 @@ async function getPlayerStatsForWindow(
 
   for (const player of players) {
     const snaps = snapshotsByPlayer.get(player.id) ?? [];
-    const matches = (matchesByPlayer.get(player.id) ?? []).sort(
+    const matches = (matchesByPlayer.get(player.id) ?? [])
+      .filter((m) => !isRemake(m))
+      .sort(
       (a, b) => a.gameStartAt.getTime() - b.gameStartAt.getTime()
     );
 
@@ -236,7 +239,7 @@ function computeStinker(
   for (const player of players) {
     const matches = matchesByPlayer.get(player.id) ?? [];
     for (const m of matches) {
-      if (m.gameDuration < 210) continue; // skip remakes
+      if (isRemake(m)) continue;
       const kda = (m.kills + m.assists) / Math.max(1, m.deaths);
 
       if (!worstKda || kda < worstKda.kda) {

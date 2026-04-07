@@ -5,6 +5,7 @@
  */
 
 import { prisma } from "@/lib/db";
+import { isRemake } from "@/lib/derived-stats";
 
 const SOLO_QUEUE = "RANKED_SOLO_5x5";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -212,20 +213,22 @@ async function getSessionData(
     }
 
     const playerParts = participants.filter((p) => p.trackedPlayerId === player.id);
-    const matches = playerParts.map((p) => ({
-      matchId: p.match.id,
-      gameStartAt: p.match.gameStartAt,
-      gameDuration: p.match.gameDuration ?? 0,
-      win: p.win,
-      championName: p.championName,
-      kills: p.kills,
-      deaths: p.deaths,
-      assists: p.assists,
-      cs: p.cs ?? 0,
-      gold: p.gold ?? 0,
-      damageDealt: p.damageDealt ?? 0,
-      visionScore: p.visionScore ?? 0,
-    }));
+    const matches = playerParts
+      .map((p) => ({
+        matchId: p.match.id,
+        gameStartAt: p.match.gameStartAt,
+        gameDuration: p.match.gameDuration ?? 0,
+        win: p.win,
+        championName: p.championName,
+        kills: p.kills,
+        deaths: p.deaths,
+        assists: p.assists,
+        cs: p.cs ?? 0,
+        gold: p.gold ?? 0,
+        damageDealt: p.damageDealt ?? 0,
+        visionScore: p.visionScore ?? 0,
+      }))
+      .filter((m) => !isRemake(m));
 
     result.push({
       playerId: player.id,

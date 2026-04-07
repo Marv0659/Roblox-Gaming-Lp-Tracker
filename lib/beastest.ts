@@ -5,6 +5,7 @@
  */
 
 import { prisma } from "@/lib/db";
+import { REMAKE_THRESHOLD_SECONDS } from "@/lib/derived-stats";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DAYS_PER_WEEK = 7;
@@ -15,6 +16,7 @@ const STREAK_REQUIRED = 6;
 interface MatchInput {
   gameStartAt: Date;
   win: boolean;
+  gameDuration: number;
 }
 
 /**
@@ -52,9 +54,12 @@ export function qualifiesForBeastest(
   matches: MatchInput[],
   now: Date = new Date()
 ): boolean {
+  const validMatches = matches.filter(
+    (m) => m.gameDuration >= REMAKE_THRESHOLD_SECONDS
+  );
   const ranges = getWeekRanges(now);
   const cutoff = now.getTime() - WEEKS_REQUIRED * DAYS_PER_WEEK * MS_PER_DAY;
-  const inWindow = matches.filter((m) => m.gameStartAt.getTime() >= cutoff);
+  const inWindow = validMatches.filter((m) => m.gameStartAt.getTime() >= cutoff);
   if (inWindow.length < STREAK_REQUIRED * WEEKS_REQUIRED) return false;
 
   for (const range of ranges) {
@@ -87,6 +92,7 @@ export function selectBeastestHolder(
 
   for (const p of qualifiers) {
     const inWeek0 = p.matches
+      .filter((m) => m.gameDuration >= REMAKE_THRESHOLD_SECONDS)
       .filter((m) => {
         const t = m.gameStartAt.getTime();
         return t >= week0Start && t < week0End;
@@ -142,6 +148,7 @@ export async function getBeastestHolder(): Promise<{
     matches: p.matchParticipants.map((m) => ({
       gameStartAt: m.match.gameStartAt,
       win: m.win,
+      gameDuration: m.match.gameDuration ?? 0,
     })),
   }));
 
