@@ -69,7 +69,6 @@ export function LpHistoryChart({ snapshots }: LpHistoryChartProps) {
           axisLine={false}
           tickMargin={8}
           domain={["dataMin - 20", "dataMax + 20"]}
-          tickFormatter={(value) => `${Math.round(Number(value) - baseline)}`}
         />
         <ChartTooltip
           content={
@@ -89,7 +88,7 @@ export function LpHistoryChart({ snapshots }: LpHistoryChartProps) {
         />
         <Line
           type="monotone"
-          dataKey="lp"
+          dataKey="lpNet"
           stroke="var(--chart-1)"
           strokeWidth={2}
           dot={{ fill: "var(--chart-1)", r: 3 }}
