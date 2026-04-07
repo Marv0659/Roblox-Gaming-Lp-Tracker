@@ -111,7 +111,17 @@ export function lpGainedInWindow(
     return last.leaguePoints - first.leaguePoints;
   }
 
-  return rankToLadderLp(last) - rankToLadderLp(first);
+  return (
+    rankToLadderLp({
+      tier: last.tier!,
+      rank: last.rank!,
+      leaguePoints: last.leaguePoints,
+    }) - rankToLadderLp({
+      tier: first.tier!,
+      rank: first.rank!,
+      leaguePoints: first.leaguePoints,
+    })
+  );
 }
 
 // ---- Winrate in last N games ----

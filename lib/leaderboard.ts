@@ -460,7 +460,17 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
     const before = [...soloSnapshots].filter((s) => s.createdAt.getTime() < t).pop();
     const after = soloSnapshots.find((s) => s.createdAt.getTime() > t);
     if (!before || !after) return null;
-    return rankToLadderLp(after) - rankToLadderLp(before);
+    return (
+      rankToLadderLp({
+        tier: after.tier,
+        rank: after.rank,
+        leaguePoints: after.leaguePoints,
+      }) - rankToLadderLp({
+        tier: before.tier,
+        rank: before.rank,
+        leaguePoints: before.leaguePoints,
+      })
+    );
   }
 
   const funStats = computeDerivedPlayerStats(

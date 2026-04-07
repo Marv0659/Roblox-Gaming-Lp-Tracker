@@ -389,8 +389,16 @@ function buildPlayer(
   let grossLost = 0;
   if (snaps.length >= 2) {
     netLp =
-      rankToLadderLp(snaps[snaps.length - 1]) -
-      rankToLadderLp(snaps[0]);
+      rankToLadderLp({
+        tier: snaps[snaps.length - 1].tier,
+        rank: snaps[snaps.length - 1].rank,
+        leaguePoints: snaps[snaps.length - 1].leaguePoints,
+      }) -
+      rankToLadderLp({
+        tier: snaps[0].tier,
+        rank: snaps[0].rank,
+        leaguePoints: snaps[0].leaguePoints,
+      });
     const deltas = deriveSnapshotDeltas(snaps, SOLO_QUEUE);
     const matchTimes = raw.matchParts.map((m) => ({ gameStartAt: m.gameStartAt }));
     associateMatchesWithDeltas(deltas, matchTimes);

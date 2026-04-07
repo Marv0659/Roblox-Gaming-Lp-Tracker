@@ -81,7 +81,15 @@ export function deriveSnapshotDeltas(
     deltas.push({
       from,
       to,
-      lpDelta: rankToLadderLp(to) - rankToLadderLp(from),
+      lpDelta: rankToLadderLp({
+        tier: to.tier,
+        rank: to.rank,
+        leaguePoints: to.leaguePoints,
+      }) - rankToLadderLp({
+        tier: from.tier,
+        rank: from.rank,
+        leaguePoints: from.leaguePoints,
+      }),
       winsDelta: to.wins - from.wins,
       lossesDelta: to.losses - from.losses,
       timeMs: to.createdAt.getTime() - from.createdAt.getTime(),

@@ -202,7 +202,15 @@ async function getPlayerStatsForWindow(
 
     let lpChange: number | null = null;
     if (snaps.length >= 2) {
-      lpChange = rankToLadderLp(snaps[snaps.length - 1]) - rankToLadderLp(snaps[0]);
+      lpChange = rankToLadderLp({
+        tier: snaps[snaps.length - 1].tier,
+        rank: snaps[snaps.length - 1].rank,
+        leaguePoints: snaps[snaps.length - 1].leaguePoints,
+      }) - rankToLadderLp({
+        tier: snaps[0].tier,
+        rank: snaps[0].rank,
+        leaguePoints: snaps[0].leaguePoints,
+      });
     }
 
     const gamesPlayed = matches.length;
