@@ -16,6 +16,10 @@ export function SyncButton({ playerId }: { playerId: string }) {
     setPending(false);
     router.refresh();
     if (result.ok) {
+      if (result.skippedDueToLock) {
+        toast.message("Sync already in progress for this player.");
+        return;
+      }
       toast.success(
         result.matchesAdded > 0
           ? `Synced. ${result.matchesAdded} new match(es) added.`

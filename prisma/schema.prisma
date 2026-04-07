@@ -85,6 +85,7 @@ model TrackedPlayer {
   rankSnapshots     RankSnapshot[]
   rankEvents        RankEvent[]
   matchParticipants MatchParticipant[]
+  syncLease         PlayerSyncLease?
 
   @@index([region])
   @@index([routingRegion])
@@ -96,6 +97,18 @@ model CronSyncState {
   id           String   @id // always "singleton"
   lastPlayerId String?
   updatedAt    DateTime @updatedAt
+}
+
+/// One active lease per player during sync to avoid cron/manual overlap.
+model PlayerSyncLease {
+  playerId String @id
+  player   TrackedPlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  owner     String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }
 
 /// Rank snapshot: time-series of rank info per queue

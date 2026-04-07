@@ -16,8 +16,10 @@ export function SyncAllButton() {
     setPending(false);
     router.refresh();
     if (result.ok) {
+      const skippedSuffix =
+        result.playersSkipped > 0 ? ` ${result.playersSkipped} skipped (already syncing).` : "";
       toast.success(
-        `Synced ${result.playersSynced} player(s). ${result.totalMatchesAdded} new match(es) added.`
+        `Synced ${result.playersSynced} player(s). ${result.totalMatchesAdded} new match(es) added.${skippedSuffix}`
       );
     } else {
       const detail = result.errors?.length

@@ -34,6 +34,7 @@ export async function GET(request: Request) {
         playerId: result.playerId,
         gameName: result.gameName,
         matchesAdded: result.matchesAdded,
+        skippedDueToLock: result.skippedDueToLock ?? false,
         step: result.step,
         total: result.total,
       });
@@ -50,6 +51,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ok: true,
       playersSynced: result.playersSynced,
+      playersSkipped: result.playersSkipped,
       totalMatchesAdded: result.totalMatchesAdded,
     });
   }
@@ -59,6 +61,7 @@ export async function GET(request: Request) {
       ok: false,
       error: result.error,
       playersSynced: result.playersSynced,
+      playersSkipped: result.playersSkipped,
       totalMatchesAdded: result.totalMatchesAdded,
       errors: result.errors,
     },
