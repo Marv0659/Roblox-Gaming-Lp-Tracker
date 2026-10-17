@@ -4,7 +4,7 @@
  * Use for: LP charts, recent LP feed, profile pages, leaderboard stats.
  */
 
-import { rankToLadderLp } from "@/lib/rank-utils";
+import { lpDiff, rankToLadderLp } from "@/lib/rank-utils";
 
 // ---- Input types (minimal; callers map from Prisma) ----
 
@@ -238,4 +238,35 @@ export function getBiggestDrop(
     if (d.to.createdAt.getTime() >= cutoff && d.lpDelta < min) min = d.lpDelta;
   }
   return min;
+}
+
+// ---- Per-match LP ----
+
+/** Riot queue id → league queueType used by rank snapshots. */
+export const QUEUE_ID_TO_QUEUE_TYPE: Record<number, string> = {
+  420: "RANKED_SOLO_5x5",
+  440: "RANKED_FLEX_SR",
+};
+
+/**
+ * Real LP change for one match, or null when it can't be attributed.
+ * Needs a snapshot of the match's own queue before and after the game, with exactly one
+ * game (wins + losses) played in between — otherwise the delta spans several games.
+ */
+export function lpChangeForMatch(
+  match: { gameStartAt: Date; queueId: number },
+  snapshots: SnapshotLike[]
+): number | null {
+  const queueType = QUEUE_ID_TO_QUEUE_TYPE[match.queueId];
+  if (!queueType) return null;
+  const t = match.gameStartAt.getTime();
+  const queueSnaps = snapshots
+    .filter((s) => s.queueType === queueType)
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const before = queueSnaps.filter((s) => s.createdAt.getTime() < t).pop();
+  const after = queueSnaps.find((s) => s.createdAt.getTime() > t);
+  if (!before || !after) return null;
+  const gamesBetween = after.wins + after.losses - (before.wins + before.losses);
+  if (gamesBetween !== 1) return null;
+  return lpDiff(before, after);
 }

@@ -71,8 +71,8 @@ model TrackedPlayer {
 
   // Riot identifiers
   puuid      String  @unique // primary cross-region identifier
-  accountId  String?         // legacy id
-  summonerId String?         // summoner-v4 id
+  accountId  String? // legacy id
+  summonerId String? // summoner-v4 id
 
   // Riot ID identity
   gameName String
@@ -81,6 +81,9 @@ model TrackedPlayer {
   // Platform routing
   region        String // e.g. "euw1", "na1" (platform)
   routingRegion String // e.g. "europe", "americas" (regional routing for account-v1/match-v5)
+
+  /// Last successful sync (manual or cron). Used to throttle manual syncs.
+  lastSyncedAt DateTime?
 
   rankSnapshots     RankSnapshot[]
   rankEvents        RankEvent[]
@@ -101,7 +104,7 @@ model CronSyncState {
 
 /// One active lease per player during sync to avoid cron/manual overlap.
 model PlayerSyncLease {
-  playerId String @id
+  playerId String        @id
   player   TrackedPlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   owner     String
@@ -109,6 +112,20 @@ model PlayerSyncLease {
   expiresAt DateTime
 
   @@index([expiresAt])
+}
+
+/// One row per sync run (cron, sync-all, single player) so failures are visible on the Settings page.
+model SyncLog {
+  id            String    @id @default(cuid())
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  trigger       String // CRON_ALL | CRON_STEP | MANUAL_ALL | MANUAL_PLAYER
+  ok            Boolean   @default(false)
+  playersSynced Int       @default(0)
+  matchesAdded  Int       @default(0)
+  error         String?
+
+  @@index([startedAt])
 }
 
 /// Rank snapshot: time-series of rank info per queue
@@ -142,13 +159,13 @@ model RankEvent {
   queueType String // e.g. RANKED_SOLO_5x5
 
   // Before state (null for PLACED)
-  tierBefore       String?
-  rankBefore       String?
+  tierBefore         String?
+  rankBefore         String?
   leaguePointsBefore Int?
 
   // After state (always set)
-  tierAfter       String
-  rankAfter       String
+  tierAfter         String
+  rankAfter         String
   leaguePointsAfter Int
 
   // Snapshot that triggered this event (optional link; multiple events can reference same snapshot)
@@ -164,9 +181,13 @@ model Match {
   createdAt DateTime @default(now())
 
   riotMatchId  String   @unique // prevents duplicate matches
-  gameStartAt  DateTime       // from match-v5 `info.gameStartTimestamp`
+  gameStartAt  DateTime // from match-v5 `info.gameStartTimestamp`
   queueId      Int      @default(0) // Riot queue id (420 solo, 440 flex, etc.)
   gameDuration Int      @default(0) // seconds
+  gameVersion  String? // patch, e.g. "14.20.123.4567"
+
+  /// All 10 participant puuids (tracked or not), for "played with" stats.
+  participantPuuids String[] @default([])
 
   participants MatchParticipant[]
 
@@ -185,23 +206,26 @@ model MatchParticipant {
   trackedPlayer   TrackedPlayer @relation(fields: [trackedPlayerId], references: [id], onDelete: Cascade)
 
   // Gameplay stats
-  championId   Int      @default(0)
+  championId   Int     @default(0)
   championName String?
-  kills        Int      @default(0)
-  deaths       Int      @default(0)
-  assists      Int      @default(0)
-  win          Boolean  @default(false)
-  teamPosition String?  // TOP, JUNGLE, MIDDLE, BOTTOM, UTILITY
-  lane         String?  // individualPosition, if you want both
+  kills        Int     @default(0)
+  deaths       Int     @default(0)
+  assists      Int     @default(0)
+  win          Boolean @default(false)
+  teamPosition String? // TOP, JUNGLE, MIDDLE, BOTTOM, UTILITY
+  lane         String? // individualPosition, if you want both
+  teamId       Int? // 100 = blue, 200 = red
 
-  cs          Int @default(0)      // total minions + jungle
+  /// Riot's own remake flag (gameEndedInEarlySurrender). Older rows fall back to the duration heuristic.
+  earlySurrender Boolean @default(false)
+
+  cs          Int @default(0) // total minions + jungle
   gold        Int @default(0)
-  damageDealt Int @default(0)      // to champions
+  damageDealt Int @default(0) // to champions
   visionScore Int @default(0)
 
   // Prevent duplicate participant rows for same player+match
   @@unique([matchId, trackedPlayerId])
-
   // Useful for per-player timelines and aggregates
   @@index([trackedPlayerId, createdAt])
   @@index([trackedPlayerId, win])

@@ -80,6 +80,7 @@ export interface ParticipantDto {
   goldEarned: number;
   totalDamageDealtToChampions: number;
   visionScore: number;
+  gameEndedInEarlySurrender?: boolean;
 }
 
 export interface TeamDto {

@@ -290,6 +290,8 @@ export async function getHallOfShame(): Promise<HallOfShameResult> {
     tagLine: p.tagLine,
     rankSnapshots: p.rankSnapshots.map((s) => ({
       queueType: s.queueType,
+      tier: s.tier,
+      rank: s.rank,
       leaguePoints: s.leaguePoints,
       createdAt: s.createdAt,
     })),
