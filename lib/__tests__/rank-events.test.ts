@@ -30,3 +30,17 @@ describe("getRankEventsToCreate", () => {
     expect(types(getRankEventsToCreate(prev, next, rankToScore(prev)))).toContain("REACHED_100_LP");
   });
 });
+
+describe("LP changes inside a division", () => {
+  it("losing LP in the same division is not a demotion", () => {
+    const prev = { tier: "DIAMOND", rank: "IV", leaguePoints: 97 };
+    const next = { tier: "DIAMOND", rank: "IV", leaguePoints: 95 };
+    expect(types(getRankEventsToCreate(prev, next, rankToScore(prev)))).toEqual([]);
+  });
+
+  it("gaining LP in the same division is only a peak, not a promotion", () => {
+    const prev = { tier: "GOLD", rank: "II", leaguePoints: 40 };
+    const next = { tier: "GOLD", rank: "II", leaguePoints: 60 };
+    expect(types(getRankEventsToCreate(prev, next, rankToScore(prev)))).toEqual(["NEW_PEAK"]);
+  });
+});

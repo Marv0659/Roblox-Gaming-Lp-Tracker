@@ -5,8 +5,17 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { syncAllPlayers } from "@/app/actions/players";
 import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export function SyncAllButton() {
+export function SyncAllButton({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  /** Icon-only button (mobile header). */
+  compact?: boolean;
+}) {
   const [pending, setPending] = useState(false);
   const router = useRouter();
 
@@ -29,9 +38,32 @@ export function SyncAllButton() {
     }
   }
 
+  if (compact) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        aria-label={pending ? "Syncing all players" : "Sync all players"}
+        onClick={handleSyncAll}
+        disabled={pending}
+        className={cn("size-11 text-brand", className)}
+      >
+        <RefreshCw className={cn("size-4", pending && "animate-spin")} aria-hidden />
+      </Button>
+    );
+  }
+
   return (
-    <Button type="button" variant="secondary" onClick={handleSyncAll} disabled={pending}>
-      {pending ? "Updating Leaderboard..." : "Update Leaderboard"}
+    <Button
+      type="button"
+      variant="outline"
+      onClick={handleSyncAll}
+      disabled={pending}
+      className={cn("h-10 border-brand bg-transparent font-semibold text-brand hover:bg-brand/10 hover:text-brand", className)}
+    >
+      <RefreshCw className={cn("size-4", pending && "animate-spin")} aria-hidden />
+      {pending ? "Syncing…" : "Sync all"}
     </Button>
   );
 }

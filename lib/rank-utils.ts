@@ -81,14 +81,19 @@ export function compareRanks(from: RankLike, to: RankLike): RankComparison {
   return "same";
 }
 
-/** True if "to" is a better rank than "from" (promotion). */
-export function isPromotion(from: RankLike, to: RankLike): boolean {
-  return compareRanks(from, to) === "higher";
+/** Tier + division only: LP changes inside a division are neither promotion nor demotion. */
+function divisionOnly(r: RankLike): RankLike {
+  return { tier: r.tier, rank: r.rank };
 }
 
-/** True if "to" is a worse rank than "from" (demotion). */
+/** True if "to" is in a better division/tier than "from" (promotion). */
+export function isPromotion(from: RankLike, to: RankLike): boolean {
+  return compareRanks(divisionOnly(from), divisionOnly(to)) === "higher";
+}
+
+/** True if "to" is in a worse division/tier than "from" (demotion). */
 export function isDemotion(from: RankLike, to: RankLike): boolean {
-  return compareRanks(from, to) === "lower";
+  return compareRanks(divisionOnly(from), divisionOnly(to)) === "lower";
 }
 
 /** True if rank (tier+division) is unchanged; LP may differ. */
@@ -99,4 +104,27 @@ export function isSameRank(from: RankLike, to: RankLike): boolean {
 /** LP change between two ranks on the continuous ladder (promotions/demotions included). */
 export function lpDiff(from: RankLike, to: RankLike): number {
   return rankToLadderLp(to) - rankToLadderLp(from);
+}
+
+const APEX_TIERS = ["MASTER", "GRANDMASTER", "CHALLENGER"];
+const TIER_BY_INDEX = Object.keys(TIER_ORDER);
+const DIVISION_BY_INDEX = ["IV", "III", "II", "I"];
+
+/** "DIAMOND", "IV" → "Diamond IV"; apex tiers drop the division. */
+export function prettyTier(tier: string, rank?: string | null): string {
+  const t = tier.charAt(0) + tier.slice(1).toLowerCase();
+  return APEX_TIERS.includes(tier) || !rank ? t : `${t} ${rank}`;
+}
+
+/** Short label for a ladder value at a division boundary, e.g. 2400 → "D IV", 2800 → "Master". */
+export function ladderLpLabel(value: number): string {
+  const tierIndex = Math.floor(value / LP_PER_TIER);
+  if (tierIndex >= TIER_ORDER.MASTER) {
+    const lp = value - TIER_ORDER.MASTER * LP_PER_TIER;
+    return lp > 0 ? `Master+ ${lp}` : "Master";
+  }
+  const tier = TIER_BY_INDEX[tierIndex];
+  if (!tier) return String(value);
+  const division = DIVISION_BY_INDEX[Math.floor((value % LP_PER_TIER) / LP_PER_DIVISION)];
+  return `${tier.charAt(0)} ${division}`;
 }

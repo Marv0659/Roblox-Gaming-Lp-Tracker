@@ -13,29 +13,29 @@ export function ViewSwitcher({ playerId }: ViewSwitcherProps) {
   const isAram = pathname.endsWith("/aram");
 
   return (
-    <div className="flex items-center rounded-md border border-border bg-muted/30 p-0.5 text-sm">
+    <nav aria-label="Player view" className="flex items-center gap-1 rounded-[10px] border border-border bg-card p-1 text-sm">
       <Link
         href={`/players/${playerId}`}
         className={cn(
-          "rounded px-3 py-1 transition-colors",
+          "flex min-h-9 items-center rounded-[7px] px-3.5 transition-colors",
           !isAram
-            ? "bg-background text-foreground shadow-sm font-medium"
+            ? "bg-foreground font-semibold text-background"
             : "text-muted-foreground hover:text-foreground"
         )}
       >
-        Solo/Duo
+        Ranked
       </Link>
       <Link
         href={`/players/${playerId}/aram`}
         className={cn(
-          "rounded px-3 py-1 transition-colors",
+          "flex min-h-9 items-center rounded-[7px] px-3.5 transition-colors",
           isAram
-            ? "bg-background text-foreground shadow-sm font-medium"
+            ? "bg-foreground font-semibold text-background"
             : "text-muted-foreground hover:text-foreground"
         )}
       >
         ARAM
       </Link>
-    </div>
+    </nav>
   );
 }

@@ -1,3 +1,4 @@
+import { formatDateTime, formatNumber } from "@/lib/utils";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getMatchDetail } from "@/lib/leaderboard";
@@ -36,7 +37,7 @@ export default async function MatchDetailPage({
         </Button>
         <h1 className="text-2xl font-bold tracking-tight">Match details</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {new Date(match.gameStartAt).toLocaleString()} · {durationMin}:{durationSec.toString().padStart(2, "0")} ·{" "}
+          {formatDateTime(match.gameStartAt)} · {durationMin}:{durationSec.toString().padStart(2, "0")} ·{" "}
           {queueLabel(match.queueId)}
         </p>
         <Badge variant="secondary" className="mt-2 font-mono text-xs">
@@ -93,8 +94,8 @@ export default async function MatchDetailPage({
                       )}
                     </td>
                     <td className="py-2 pr-4">{p.cs}</td>
-                    <td className="py-2 pr-4">{p.gold.toLocaleString()}</td>
-                    <td className="py-2 pr-4">{p.damageDealt.toLocaleString()}</td>
+                    <td className="py-2 pr-4">{formatNumber(p.gold)}</td>
+                    <td className="py-2 pr-4">{formatNumber(p.damageDealt)}</td>
                     <td className="py-2">{p.visionScore}</td>
                   </tr>
                 ))}

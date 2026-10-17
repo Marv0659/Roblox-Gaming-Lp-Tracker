@@ -1,423 +1,331 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPlayerDetail } from "@/lib/leaderboard";
+import { getPlayerDetail, SOLO_QUEUE } from "@/lib/leaderboard";
 import { getRecentRankEventsForPlayer } from "@/lib/rank-events";
+import { describeRankEvent } from "@/lib/rank-event-labels";
 import { getPlayerBadges, getRoughPatchSummary, BADGE_TOOLTIPS } from "@/lib/player-badges";
 import { getBeastestHolder } from "@/lib/beastest";
 import type { ChampionTrustLabel } from "@/lib/champion-trust";
-import { getQueueRecommendationForPlayer } from "@/lib/queue-recommendation";
+import { getQueueRecommendationForPlayer, type QueueRecommendationResult } from "@/lib/queue-recommendation";
+import { tierColor } from "@/lib/tier-colors";
+import { cn, formatShortDate } from "@/lib/utils";
+import {
+  ChampionIcon,
+  Eyebrow,
+  LpBar,
+  Panel,
+  prettyTier,
+  SectionTitle,
+  StatTile,
+  TierEmblem,
+} from "@/components/lol";
+import { LpHistoryChart } from "@/components/lp-history-chart";
 import { SyncButton } from "./sync-button";
 import { ViewSwitcher } from "./view-switcher";
-import { RecentMatchesTabs } from "./recent-matches-tabs";
-import { LpHistoryChart } from "@/components/lp-history-chart";
-import { RecentRankEvents } from "@/components/recent-rank-events";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { tierColor } from "@/lib/tier-colors";
-import { cn, formatDate, formatDateTime } from "@/lib/utils";
-
-function ChampionTrustBadge({ label }: { label: ChampionTrustLabel }) {
-  const styles: Record<ChampionTrustLabel, string> = {
-    TRUSTED: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-    COINFLIP: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30",
-    DO_NOT_ALLOW: "bg-destructive/20 text-destructive border-destructive/30",
-    FAKE_COMFORT_PICK: "bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30",
-    POCKET_PICK: "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30",
-    INSUFFICIENT_DATA: "bg-muted text-muted-foreground border-border",
-  };
-  return (
-    <Badge
-      variant="outline"
-      className={cn("text-[10px] font-medium uppercase tracking-wide", styles[label])}
-    >
-      {label.replace(/_/g, " ")}
-    </Badge>
-  );
-}
+import { RecentGames } from "./recent-games";
 
 export const dynamic = "force-dynamic";
 
-export default async function PlayerDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+const ROLE: Record<string, string> = {
+  TOP: "Top",
+  JUNGLE: "Jungle",
+  MIDDLE: "Mid",
+  BOTTOM: "Bot",
+  UTILITY: "Support",
+};
+
+const TRUST: Record<ChampionTrustLabel, { label: string; className: string }> = {
+  TRUSTED: { label: "Trusted", className: "bg-win-soft text-win" },
+  POCKET_PICK: { label: "Pocket pick", className: "bg-[#b48cff]/18 text-[#c9aeff]" },
+  COINFLIP: { label: "Coinflip", className: "bg-brand/15 text-brand" },
+  FAKE_COMFORT_PICK: { label: "Fake comfort", className: "bg-loss-soft text-loss" },
+  DO_NOT_ALLOW: { label: "Do not allow", className: "bg-loss-soft text-loss" },
+  INSUFFICIENT_DATA: { label: "Too early", className: "bg-surface-2 text-muted-foreground" },
+};
+
+const VERDICT_TONE: Record<string, string> = {
+  YES: "text-win",
+  ONLY_WITH_SUPERVISION: "text-brand",
+  ONLY_IF_NOT_LOCKING_THAT_CHAMP: "text-[#c9aeff]",
+  NO: "text-loss",
+  ABSOLUTELY_NOT: "text-loss",
+};
+
+function verdictText(q: QueueRecommendationResult): string {
+  if (q.recommendationLabel === "ONLY_IF_NOT_LOCKING_THAT_CHAMP" && q.badChampionName) {
+    return `Not on ${q.badChampionName}`;
+  }
+  return q.recommendationLabel.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+}
+
+function mainRole(positions: (string | null)[]): string | null {
+  const counts = new Map<string, number>();
+  for (const p of positions) if (p) counts.set(p, (counts.get(p) ?? 0) + 1);
+  const [top] = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  if (!top || top[1] < Math.max(3, positions.length * 0.5)) return null;
+  return ROLE[top[0]] ?? null;
+}
+
+function signed(n: number): string {
+  return `${n > 0 ? "+" : ""}${n}`;
+}
+
+export default async function PlayerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [player, milestones, beastestHolder] = await Promise.all([
     getPlayerDetail(id),
-    getRecentRankEventsForPlayer(id, 15),
+    getRecentRankEventsForPlayer(id, 6),
     getBeastestHolder(),
   ]);
   if (!player) notFound();
 
-  const soloRank = player.currentRanks.soloDuo;
-  const flexRank = player.currentRanks.flex;
-  const badges = getPlayerBadges(player.funStats, player.id, {
-    beastestHolderId: beastestHolder?.id ?? null,
-  });
+  const solo = player.currentRanks.soloDuo;
+  const flex = player.currentRanks.flex;
+  const badges = getPlayerBadges(player.funStats, player.id, { beastestHolderId: beastestHolder?.id ?? null });
   const roughPatch = getRoughPatchSummary(player.funStats);
-  const queueRecommendation = getQueueRecommendationForPlayer(player);
+  const verdict = getQueueRecommendationForPlayer(player);
+  const role = mainRole(player.recentMatches.map((m) => m.teamPosition));
 
-  const last10 = player.recentMatches.slice(0, 10);
-  const last20 = player.recentMatches.slice(0, 20);
-  const last10Wins = last10.filter((m) => m.win).length;
-  const last20Wins = last20.filter((m) => m.win).length;
+  const played = player.recentMatches.filter((m) => !(m.earlySurrender || m.gameDuration < 210));
+  const record = (n: number) => {
+    const slice = played.slice(0, n);
+    const wins = slice.filter((m) => m.win).length;
+    return { games: slice.length, wins, losses: slice.length - wins };
+  };
+  const last10 = record(10);
+  const last20 = record(20);
+  const { currentWinStreak, currentLossStreak, averageKda, lpGained30d } = player.funStats;
+  const soloSnapshots = player.recentSnapshots.filter((s) => s.queueType === SOLO_QUEUE);
+  const championIds = new Map(player.recentMatches.map((m) => [m.championName, m.championId]));
 
   return (
-    <div className="p-4 sm:p-6 md:p-8">
-      <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <Button variant="ghost" size="sm" className="mb-2 -ml-2 text-muted-foreground" asChild>
-            <Link href="/players">← Players</Link>
-          </Button>
-          <h1 className="text-xl font-bold tracking-tight break-words sm:text-2xl">
-            {player.gameName}
-            <span className="font-normal text-muted-foreground">#{player.tagLine}</span>
-          </h1>
-          <p className="mt-1">
-            <Link
-              href={`/ranked-wrapped?player=${encodeURIComponent(id)}`}
-              className="text-sm font-medium text-violet-400 hover:text-violet-300 hover:underline"
-            >
-              Open Ranked Wrapped →
-            </Link>
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="font-normal uppercase" title="Server/region where this account plays (e.g. EUW, NA).">
-              {player.region}
-            </Badge>
-            {badges.length > 0 &&
-              badges.map((b) => (
-                <Badge
+    <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-6 sm:px-6 md:px-10 md:py-8">
+      <Link href="/dashboard" className="text-[13px] text-muted-foreground hover:text-foreground">
+        ← Leaderboard
+      </Link>
+
+      <Panel aria-label="Profile" className="flex flex-wrap items-stretch gap-6 p-5 md:p-6">
+        <div className="flex min-w-[240px] flex-[1_1_260px] flex-col justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="font-display text-4xl font-bold leading-none break-words md:text-5xl">
+              {player.gameName} <span className="font-semibold text-faint">#{player.tagLine}</span>
+            </h1>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full bg-surface-2 px-2.5 py-1 uppercase text-[#cdd2d9]">{player.region}</span>
+              {role && <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[#cdd2d9]">{role} main</span>}
+              {badges.map((b) => (
+                <span
                   key={b}
-                  variant={b === "THE BEASTEST" ? "default" : "outline"}
-                  className={cn(
-                    "font-normal",
-                    b === "THE BEASTEST" && "bg-amber-500/90 text-black hover:bg-amber-500"
-                  )}
                   title={BADGE_TOOLTIPS[b] ?? ""}
+                  className={cn(
+                    "rounded-full px-2.5 py-1",
+                    b === "THE BEASTEST" ? "bg-brand font-bold text-[#15181d]" : "bg-brand/15 text-brand"
+                  )}
                 >
                   {b}
-                </Badge>
+                </span>
               ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <SyncButton playerId={player.id} />
+            <Link
+              href={`/ranked-wrapped?player=${encodeURIComponent(id)}`}
+              className="inline-flex min-h-11 items-center rounded-lg border border-input px-4 text-sm font-medium hover:bg-surface-2"
+            >
+              Ranked Wrapped
+            </Link>
+            <ViewSwitcher playerId={player.id} />
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <ViewSwitcher playerId={player.id} />
-          <SyncButton playerId={player.id} />
-        </div>
-      </div>
 
-      <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-semibold" title="Latest ranked tier, division, LP, and win/loss for this queue. Updated when you sync.">Current rank</h2>
-          </CardHeader>
-          <CardContent>
-            {soloRank || flexRank ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[
-                  { label: "Solo/Duo", rank: soloRank },
-                  { label: "Flex", rank: flexRank },
-                ].map(({ label, rank }) => (
-                  <div key={label} className="rounded-md border border-border p-3">
-                    <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
-                      {label}
-                    </p>
-                    {rank ? (
-                      <>
-                        <div>
-                          <span className={cn("text-xl font-bold", tierColor(rank.tier))}>
-                            {rank.tier} {rank.rank}
-                          </span>
-                          <span
-                            className="ml-2 text-muted-foreground"
-                            title="League Points: progress within the current division (0–100)."
-                          >
-                            {rank.leaguePoints} LP
-                          </span>
-                        </div>
-                        <div className="text-muted-foreground">
-                          {rank.wins}W / {rank.losses}L
-                          {rank.winrate != null && (
-                            <span className="ml-2">({rank.winrate.toFixed(1)}% WR)</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Snapshot: {formatDateTime(rank.snapshotAt)}
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No rank data yet.</p>
-                    )}
-                  </div>
-                ))}
-              </div>
+        <div className="flex min-w-[260px] flex-[1_1_280px] items-center gap-5 rounded-xl bg-surface-2 p-4 md:p-5">
+          <TierEmblem tier={solo?.tier} size={60} />
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Eyebrow>Solo / Duo</Eyebrow>
+            {solo ? (
+              <>
+                <div className="font-display text-3xl font-bold leading-none">
+                  <span className={tierColor(solo.tier)}>{prettyTier(solo.tier, solo.rank)}</span> {solo.leaguePoints} LP
+                </div>
+                <LpBar tier={solo.tier} lp={solo.leaguePoints} className="h-1.5" />
+                <div className="text-[13px] text-muted-foreground">
+                  {solo.wins}W {solo.losses}L{solo.winrate != null ? ` · ${solo.winrate.toFixed(1)}%` : ""}
+                </div>
+              </>
             ) : (
-              <p className="text-muted-foreground">
-                No rank data. Click &quot;Sync now&quot; to fetch from Riot.
-              </p>
+              <div className="font-display text-2xl font-bold text-muted-foreground">Unranked</div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-semibold">Recent performance</h2>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
-              <div>
-                <dt className="text-xs uppercase tracking-wide" title="Net League Points gained or lost over the last 7 days.">LP last 7 days</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {player.funStats.lpGained7d >= 0 ? "+" : ""}
-                  {player.funStats.lpGained7d} LP
-                </dd>
+        <div className="flex min-w-[200px] flex-[1_1_200px] flex-col justify-center gap-1.5 rounded-xl bg-surface-2 p-4 md:p-5">
+          <Eyebrow>Flex</Eyebrow>
+          {flex ? (
+            <>
+              <div className="font-display text-2xl font-bold leading-none">
+                <span className={tierColor(flex.tier)}>{prettyTier(flex.tier, flex.rank)}</span> {flex.leaguePoints} LP
               </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide" title="Net League Points gained or lost over the last 30 days.">LP last 30 days</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {player.funStats.lpGained30d >= 0 ? "+" : ""}
-                  {player.funStats.lpGained30d} LP
-                </dd>
+              <div className="text-[13px] text-muted-foreground">
+                {flex.wins}W {flex.losses}L{flex.winrate != null ? ` · ${flex.winrate.toFixed(1)}%` : ""}
               </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide">Last 10 games</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {last10.length >= 10
-                    ? `${last10Wins}W–${10 - last10Wins}L (${player.funStats.winrateLast10?.toFixed(1) ?? "—"}%)`
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide">Last 20 games</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {last20.length >= 20
-                    ? `${last20Wins}W–${20 - last20Wins}L (${player.funStats.winrateLast20?.toFixed(1) ?? "—"}%)`
-                    : last20.length > 0
-                      ? `${last20Wins}W–${last20.length - last20Wins}L (${player.funStats.winrateLast20?.toFixed(1) ?? "—"}%)`
-                      : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide" title="Current number of consecutive wins.">Win streak</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {player.funStats.currentWinStreak > 0
-                    ? `W${player.funStats.currentWinStreak}`
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide" title="Current number of consecutive losses.">Loss streak</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {player.funStats.currentLossStreak > 0
-                    ? `L${player.funStats.currentLossStreak}`
-                    : "—"}
-                </dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mb-8">
-        <Card
-          className={cn(
-            "border-border/60",
-            queueRecommendation.recommendationLabel === "YES" &&
-              "border-emerald-500/40 bg-emerald-500/5",
-            queueRecommendation.recommendationLabel === "ONLY_WITH_SUPERVISION" &&
-              "border-amber-500/40 bg-amber-500/5",
-            queueRecommendation.recommendationLabel === "ONLY_IF_NOT_LOCKING_THAT_CHAMP" &&
-              "border-violet-500/40 bg-violet-500/5",
-            queueRecommendation.recommendationLabel === "NO" &&
-              "border-destructive/40 bg-destructive/5",
-            queueRecommendation.recommendationLabel === "ABSOLUTELY_NOT" &&
-              "border-destructive/70 bg-destructive/10"
+            </>
+          ) : (
+            <div className="font-display text-2xl font-bold text-muted-foreground">Unranked</div>
           )}
-        >
-          <CardHeader>
-            <h2 className="text-lg font-semibold">Should you queue?</h2>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-baseline justify-between gap-4">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-extrabold tracking-tight">
-                  {queueRecommendation.recommendationLabel === "ONLY_IF_NOT_LOCKING_THAT_CHAMP" &&
-                  queueRecommendation.badChampionName
-                    ? `ONLY IF NOT LOCKING ${queueRecommendation.badChampionName}`
-                    : queueRecommendation.recommendationLabel.replace(/_/g, " ")}
-                </span>
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                  {Math.round(queueRecommendation.recommendationScore)} / 100
+        </div>
+      </Panel>
+
+      <section aria-label="Form" className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <StatTile
+          label="Last 10"
+          value={last10.games ? `${last10.wins}W ${last10.losses}L` : "—"}
+          sub={last10.games ? `${Math.round((last10.wins / last10.games) * 100)}% win rate` : "No games yet"}
+        />
+        <StatTile
+          label="Last 20"
+          value={last20.games ? `${last20.wins}W ${last20.losses}L` : "—"}
+          sub={last20.games ? `${Math.round((last20.wins / last20.games) * 100)}% win rate` : "No games yet"}
+        />
+        <StatTile
+          label="Streak"
+          value={
+            currentWinStreak > 0 ? (
+              <span className="text-win">W{currentWinStreak}</span>
+            ) : currentLossStreak > 0 ? (
+              <span className="text-loss">L{currentLossStreak}</span>
+            ) : (
+              "—"
+            )
+          }
+          sub={
+            currentWinStreak > 1
+              ? `${currentWinStreak} wins in a row`
+              : currentLossStreak > 1
+                ? `${currentLossStreak} losses in a row`
+                : "No streak"
+          }
+        />
+        <StatTile
+          label="Avg KDA"
+          value={averageKda != null ? averageKda.toFixed(2) : "—"}
+          sub={`Last ${player.recentMatches.length} games`}
+        />
+      </section>
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          {soloSnapshots.length >= 2 && (
+            <Panel aria-label="LP history" className="flex flex-col gap-3 p-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <SectionTitle>LP history · solo</SectionTitle>
+                <span className="text-xs text-faint">
+                  {signed(lpGained30d)} LP in 30 days · steps are rank snapshots
                 </span>
               </div>
-              <span className="text-xs text-muted-foreground">
-                Confidence: {(queueRecommendation.confidence * 100).toFixed(0)}%
+              <LpHistoryChart snapshots={soloSnapshots} />
+            </Panel>
+          )}
+
+          <RecentGames games={player.recentMatches} />
+        </div>
+
+        <aside className="flex min-w-0 flex-col gap-6">
+          <Panel aria-label="Queue verdict" className="flex flex-col gap-2.5 border-[#2e4a66] p-5">
+            <Eyebrow>Should you queue?</Eyebrow>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span
+                className={cn(
+                  "font-display text-4xl font-bold uppercase leading-none",
+                  VERDICT_TONE[verdict.recommendationLabel] ?? "text-foreground"
+                )}
+              >
+                {verdictText(verdict)}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {Math.round(verdict.recommendationScore)} / 100 · {Math.round(verdict.confidence * 100)}% confident
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {queueRecommendation.shortReason}
-            </p>
-            {queueRecommendation.warningTags && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {queueRecommendation.warningTags.map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-[10px] uppercase">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            )}
-            {(queueRecommendation.championWarning || queueRecommendation.queueCurfewWarning) && (
-              <div className="pt-2 text-xs text-muted-foreground space-y-1">
-                {queueRecommendation.championWarning && (
-                  <p>Champion warning: {queueRecommendation.championWarning}</p>
-                )}
-                {queueRecommendation.queueCurfewWarning && (
-                  <p>Curfew hint: {queueRecommendation.queueCurfewWarning}</p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mb-8">
-        <RecentRankEvents
-          events={milestones}
-          showPlayerName={false}
-          title="Recent Milestones"
-          emptyMessage="No milestones yet. Sync to detect placements, promos, and new peaks."
-        />
-      </div>
-
-      <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-semibold">Champions & KDA</h2>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
-              <div>
-                <dt className="text-xs uppercase tracking-wide">Most played</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {player.funStats.mostPlayedChampion ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide">Avg KDA (recent)</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {player.funStats.averageKda != null
-                    ? player.funStats.averageKda.toFixed(2)
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide">Best by WR</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {player.funStats.bestChampionByWinrate
-                    ? `${player.funStats.bestChampionByWinrate.championName} (${player.funStats.bestChampionByWinrate.winrate.toFixed(1)}% · ${player.funStats.bestChampionByWinrate.games} games)`
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide">Worst by WR</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {player.funStats.worstChampionByWinrate
-                    ? `${player.funStats.worstChampionByWinrate.championName} (${player.funStats.worstChampionByWinrate.winrate.toFixed(1)}% · ${player.funStats.worstChampionByWinrate.games} games)`
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide">Games last 7 days</dt>
-                <dd className="text-base font-medium text-foreground">
-                  {player.funStats.totalGamesLast7d}
-                </dd>
-              </div>
-            </dl>
-            {player.championTrust.length > 0 && (
-              <div className="mt-4 border-t border-border pt-4">
-                <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Champion trust
-                </h3>
-                <ul className="space-y-1.5 text-sm">
-                  {player.championTrust.map((c) => (
-                    <li
-                      key={c.championName}
-                      className="flex flex-wrap items-baseline gap-2"
-                    >
-                      <span className="font-medium text-foreground">{c.championName}</span>
-                      <ChampionTrustBadge label={c.trustLabel} />
-                      <span className="text-muted-foreground">{c.trustReason}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {roughPatch && (
-          <Card
-            className={cn(
-              "border-amber-500/30",
-              roughPatch.severity === "high" && "border-destructive/40 bg-destructive/5",
-              roughPatch.severity === "medium" && "bg-amber-500/5"
-            )}
-          >
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-amber-600 dark:text-amber-500">
-                Rough patch
-              </h2>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{roughPatch.summary}</p>
-              <Badge variant="secondary" className="mt-2 font-normal">
-                Data-driven, not salt
-              </Badge>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      <Card className="mb-8">
-        <CardHeader>
-          <h2 className="text-lg font-semibold">Recent matches</h2>
-        </CardHeader>
-        <CardContent>
-          <RecentMatchesTabs matches={player.recentMatches} />
-        </CardContent>
-      </Card>
-
-      {player.recentSnapshots.length > 0 && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-semibold">LP history</h2>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <LpHistoryChart
-              snapshots={player.recentSnapshots.filter(
-                (s) => s.queueType === "RANKED_SOLO_5x5"
-              )}
-            />
-            {player.recentSnapshots.filter((s) => s.queueType === "RANKED_SOLO_5x5")
-              .length > 0 && (
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                {player.recentSnapshots
-                  .filter((s) => s.queueType === "RANKED_SOLO_5x5")
-                  .slice(0, 10)
-                  .map((s, i) => (
-                    <li key={i}>
-                      {s.tier} {s.rank} {s.leaguePoints} LP —{" "}
-                      {formatDateTime(s.createdAt)}
-                    </li>
-                  ))}
+            <p className="text-sm text-[#cdd2d9]">{verdict.shortReason}</p>
+            {(verdict.championWarning || verdict.queueCurfewWarning) && (
+              <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+                {verdict.championWarning && <li>{verdict.championWarning}</li>}
+                {verdict.queueCurfewWarning && <li>{verdict.queueCurfewWarning}</li>}
               </ul>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </Panel>
+
+          {roughPatch && (
+            <Panel aria-label="Rough patch" className="flex flex-col gap-2 border-loss-solid/40 p-5">
+              <Eyebrow className="text-loss">Rough patch</Eyebrow>
+              <p className="text-sm text-[#cdd2d9]">{roughPatch.summary}</p>
+              <p className="text-xs text-faint">Data-driven, not salt.</p>
+            </Panel>
+          )}
+
+          <Panel aria-label="Champion trust" className="flex flex-col gap-3 p-5">
+            <SectionTitle>Champion trust</SectionTitle>
+            {player.championTrust.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Needs 3+ games on a champion.</p>
+            ) : (
+              player.championTrust.slice(0, 6).map((c) => {
+                const t = TRUST[c.trustLabel];
+                return (
+                  <div key={c.championName} className="flex min-h-10 items-center gap-3" title={c.trustReason}>
+                    <ChampionIcon
+                      championId={championIds.get(c.championName)}
+                      championName={c.championName}
+                      className="size-9"
+                    />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-sm font-semibold">{c.championName}</span>
+                      <span className="text-xs text-faint">
+                        {c.games} games · {Math.round(c.winrate)}%
+                      </span>
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide",
+                        t.className
+                      )}
+                    >
+                      {t.label}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </Panel>
+
+          <Panel aria-label="Milestones" className="flex flex-col gap-3 p-5">
+            <SectionTitle>Milestones</SectionTitle>
+            {milestones.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No milestones yet.</p>
+            ) : (
+              milestones.map((m) => {
+                const c = describeRankEvent(m);
+                return (
+                  <div key={m.id} className="flex justify-between gap-3 text-sm">
+                    <span className="flex items-baseline gap-2">
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "inline-block size-2 shrink-0 rotate-45 rounded-[2px]",
+                          c.tone === "up" && "bg-win-solid",
+                          c.tone === "down" && "bg-loss-solid",
+                          c.tone === "peak" && "bg-brand"
+                        )}
+                      />
+                      <span className="first-letter:uppercase">{c.text}</span>
+                    </span>
+                    <span className="shrink-0 whitespace-nowrap text-faint">{formatShortDate(m.createdAt)}</span>
+                  </div>
+                );
+              })
+            )}
+          </Panel>
+        </aside>
+      </div>
     </div>
   );
 }

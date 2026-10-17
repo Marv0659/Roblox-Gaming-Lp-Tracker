@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Barlow_Condensed, Geist_Mono, IBM_Plex_Sans } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const body = IBM_Plex_Sans({
+  variable: "--font-body",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
+const heading = Barlow_Condensed({
+  variable: "--font-heading",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -15,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RobloxGamingTracker",
+  title: "LP Tracker",
   description: "Friends-only gaming tracker",
 };
 
@@ -33,7 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background text-foreground antialiased font-sans`}
+        className={`${body.variable} ${heading.variable} ${geistMono.variable} min-h-screen bg-background text-foreground antialiased font-sans`}
       >
         <Providers>{children}</Providers>
         <Toaster position="bottom-center" />

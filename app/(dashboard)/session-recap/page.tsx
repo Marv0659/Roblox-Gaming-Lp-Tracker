@@ -1,3 +1,4 @@
+import { formatDate, formatShortDate, formatTime } from "@/lib/utils";
 import Link from "next/link";
 import {
   getSessionRecap,
@@ -32,12 +33,10 @@ function formatSessionWindow(preset: SessionWindowPreset): string {
 }
 
 function formatTimeRange(start: Date, end: Date): string {
-  const sameDay =
-    start.toDateString() === end.toDateString();
-  if (sameDay) {
-    return `${start.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} ${start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })} – ${end.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`;
+  if (formatDate(start) === formatDate(end)) {
+    return `${formatShortDate(start)} ${formatTime(start)} – ${formatTime(end)}`;
   }
-  return `${start.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} – ${end.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`;
+  return `${formatShortDate(start)} ${formatTime(start)} – ${formatShortDate(end)} ${formatTime(end)}`;
 }
 
 function PlayerLink({
@@ -151,12 +150,7 @@ function SessionRecapContent({ recap }: { recap: SessionRecapData }) {
                     {recap.bestMatch.championName ?? "—"} · {recap.bestMatch.reason}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {recap.bestMatch.gameStartAt.toLocaleString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatShortDate(recap.bestMatch.gameStartAt)} {formatTime(recap.bestMatch.gameStartAt)}
                   </p>
                 </CardContent>
               </Card>
@@ -179,12 +173,7 @@ function SessionRecapContent({ recap }: { recap: SessionRecapData }) {
                     {recap.worstCollapse.championName ?? "—"} · {recap.worstCollapse.reason}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {recap.worstCollapse.gameStartAt.toLocaleString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatShortDate(recap.worstCollapse.gameStartAt)} {formatTime(recap.worstCollapse.gameStartAt)}
                   </p>
                 </CardContent>
               </Card>

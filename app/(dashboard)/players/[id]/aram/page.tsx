@@ -14,7 +14,7 @@ import { SyncButton } from "../sync-button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -60,8 +60,8 @@ function ChallengeRow({ progress }: { progress: AramChallengeProgress }) {
         <div className="space-y-1">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>
-              {value.toLocaleString()}
-              {nextThreshold != null ? ` / ${nextThreshold.toLocaleString()}` : ""}
+              {formatNumber(value)}
+              {nextThreshold != null ? ` / ${formatNumber(nextThreshold)}` : ""}
             </span>
             <span>
               Next: {TIER_ORDER[tierIndex + 1] ?? "MAX"}
@@ -76,7 +76,7 @@ function ChallengeRow({ progress }: { progress: AramChallengeProgress }) {
 
       {completed && (
         <p className="text-xs text-purple-400">
-          ✓ Completed — {value.toLocaleString()} total
+          ✓ Completed — {formatNumber(value)} total
         </p>
       )}
     </li>
@@ -112,7 +112,7 @@ function GroupCard({
               {groupProgress.level === "NONE" ? "No progress" : groupProgress.level}
             </span>
             <span className="text-xs text-muted-foreground">
-              {groupProgress.value.toLocaleString()} pts
+              {formatNumber(groupProgress.value)} pts
             </span>
           </div>
         )}
@@ -205,9 +205,9 @@ export default async function AramPage({
                 {authority.level === "NONE" ? "Unranked" : authority.level}
               </span>
               <p className="text-xs text-muted-foreground">
-                {authority.value.toLocaleString()} pts
+                {formatNumber(authority.value)} pts
                 {authority.nextThreshold != null &&
-                  ` / ${authority.nextThreshold.toLocaleString()} for ${TIER_ORDER[authority.tierIndex + 1]}`}
+                  ` / ${formatNumber(authority.nextThreshold)} for ${TIER_ORDER[authority.tierIndex + 1]}`}
               </p>
               {authority.nextThreshold != null && (
                 <ProgressBar

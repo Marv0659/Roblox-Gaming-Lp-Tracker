@@ -4,6 +4,7 @@
 
 import type { RankEventType } from "@/lib/rank-events";
 import type { RankEventDisplay } from "@/lib/rank-events";
+import { prettyTier } from "@/lib/rank-utils";
 
 export const RANK_EVENT_LABELS: Record<RankEventType, string> = {
   PLACED: "Placed",
@@ -41,5 +42,27 @@ export function getRankEventDescription(e: RankEventDisplay): string {
       return `Reached 100 LP (${e.tierAfter} ${e.rankAfter})`;
     default:
       return after;
+  }
+}
+
+/** Short badge + sentence used by the dashboard feed and player milestones. */
+export function describeRankEvent(e: RankEventDisplay): {
+  kind: string;
+  tone: "up" | "down" | "peak";
+  text: string;
+} {
+  const rank = prettyTier(e.tierAfter, e.rankAfter);
+  const queue = e.queueType === "RANKED_FLEX_SR" ? " in Flex" : "";
+  switch (e.eventType) {
+    case "PROMOTED":
+      return { kind: "Up", tone: "up", text: `promoted to ${rank}${queue}` };
+    case "DEMOTED":
+      return { kind: "Down", tone: "down", text: `dropped to ${rank}${queue}` };
+    case "NEW_PEAK":
+      return { kind: "Peak", tone: "peak", text: `new peak — ${rank} ${e.leaguePointsAfter} LP${queue}` };
+    case "PLACED":
+      return { kind: "Placed", tone: "peak", text: `placed in ${rank}${queue}` };
+    default:
+      return { kind: "100 LP", tone: "up", text: `hit 100 LP in ${rank}${queue}` };
   }
 }

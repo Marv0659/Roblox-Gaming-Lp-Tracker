@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { syncTrackedPlayer } from "@/app/actions/players";
 import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function SyncButton({ playerId }: { playerId: string }) {
   const [pending, setPending] = useState(false);
@@ -31,7 +33,13 @@ export function SyncButton({ playerId }: { playerId: string }) {
   }
 
   return (
-    <Button type="button" onClick={handleSync} disabled={pending}>
+    <Button
+      type="button"
+      onClick={handleSync}
+      disabled={pending}
+      className="h-11 bg-brand px-5 font-semibold text-[#15181d] hover:bg-brand/90"
+    >
+      <RefreshCw className={cn("size-4", pending && "animate-spin")} aria-hidden />
       {pending ? "Syncing…" : "Sync now"}
     </Button>
   );

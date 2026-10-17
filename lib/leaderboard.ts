@@ -21,9 +21,9 @@ export const QUEUE_OPTIONS = [
   { value: FLEX_QUEUE, label: "Flex 5v5" },
 ] as const;
 
-/** Typical LP change per match (Riot doesn't provide per-match LP). Used for display only. */
-export const ESTIMATED_LP_WIN = 24;
-export const ESTIMATED_LP_LOSS = -18;
+import { ESTIMATED_LP_LOSS, ESTIMATED_LP_WIN } from "@/lib/leaderboard-constants";
+
+export { ESTIMATED_LP_LOSS, ESTIMATED_LP_WIN };
 
 export function estimatedLpForMatch(win: boolean): number {
   return win ? ESTIMATED_LP_WIN : ESTIMATED_LP_LOSS;
@@ -139,6 +139,7 @@ export interface RecentMatchFeedItem {
   tagLine: string;
   win: boolean;
   queueId: number;
+  championId: number;
   championName: string | null;
   kills: number;
   deaths: number;
@@ -167,6 +168,7 @@ export async function getRecentMatchFeed(
     tagLine: p.trackedPlayer.tagLine,
     win: p.win,
     queueId: p.match.queueId,
+    championId: p.championId,
     championName: p.championName,
     kills: p.kills,
     deaths: p.deaths,
@@ -175,6 +177,52 @@ export async function getRecentMatchFeed(
     gameDuration: p.match.gameDuration,
     matchDbId: p.match.id,
   }));
+}
+
+/** W / L / R(emake) */
+export type GameResult = "W" | "L" | "R";
+
+/**
+ * Last `take` results per tracked player in one ranked queue, newest first.
+ * Used for the form strip and win/loss streak highlights.
+ */
+export async function getRecentFormByPlayer(
+  queueType: string = SOLO_QUEUE,
+  take: number = 10
+): Promise<Map<string, GameResult[]>> {
+  const queueId = queueType === FLEX_QUEUE ? 440 : 420;
+  const players = await prisma.trackedPlayer.findMany({
+    select: {
+      id: true,
+      matchParticipants: {
+        where: { match: { queueId } },
+        orderBy: { match: { gameStartAt: "desc" } },
+        take,
+        select: { win: true, earlySurrender: true, match: { select: { gameDuration: true } } },
+      },
+    },
+  });
+  return new Map(
+    players.map((p) => [
+      p.id,
+      p.matchParticipants.map((m): GameResult =>
+        m.earlySurrender || m.match.gameDuration < 210 ? "R" : m.win ? "W" : "L"
+      ),
+    ])
+  );
+}
+
+/** Current streak from newest game, ignoring remakes: { kind: "W", count: 4 }. */
+export function currentStreak(results: GameResult[]): { kind: "W" | "L"; count: number } | null {
+  const played = results.filter((r) => r !== "R");
+  if (played.length === 0) return null;
+  const kind = played[0] as "W" | "L";
+  let count = 0;
+  for (const r of played) {
+    if (r !== kind) break;
+    count++;
+  }
+  return { kind, count };
 }
 
 export interface MatchDetailParticipant {
@@ -310,7 +358,11 @@ export interface PlayerDetail {
     matchDbId: string;
     matchId: string;
     queueId: number;
+    championId: number;
     championName: string | null;
+    teamPosition: string | null;
+    /** Riot remake flag (older rows: false; use gameDuration too). */
+    earlySurrender: boolean;
     kills: number;
     deaths: number;
     assists: number;
@@ -518,7 +570,10 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
       matchDbId: mp.match.id,
       matchId: mp.match.riotMatchId,
       queueId: mp.match.queueId,
+      championId: mp.championId,
       championName: mp.championName,
+      teamPosition: mp.teamPosition,
+      earlySurrender: mp.earlySurrender,
       kills: mp.kills,
       deaths: mp.deaths,
       assists: mp.assists,

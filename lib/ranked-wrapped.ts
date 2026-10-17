@@ -3,6 +3,7 @@
  * No Riot API. Composable; scope supports "all history" today and date ranges later.
  */
 
+import { formatDate } from "@/lib/utils";
 import { prisma } from "@/lib/db";
 import { SOLO_QUEUE } from "@/lib/leaderboard";
 import {
@@ -56,7 +57,7 @@ function describeScope(scope: RankedWrappedScope): RankedWrappedScopeDescriptor 
     return { label: "All tracked history", kind: "all" };
   }
   return {
-    label: `${scope.start.toLocaleDateString()} – ${scope.end.toLocaleDateString()}`,
+    label: `${formatDate(scope.start)} – ${formatDate(scope.end)}`,
     kind: "range",
     start: scope.start.toISOString(),
     end: scope.end.toISOString(),

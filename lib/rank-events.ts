@@ -282,14 +282,26 @@ export interface RankEventDisplay {
   tagLine?: string;
 }
 
+/**
+ * Events stored before isPromotion/isDemotion ignored LP: a plain LP loss inside a division was
+ * saved as DEMOTED (and a gain as PROMOTED). Hide those rows when reading.
+ */
+function isLegacyLpOnlyChange(r: { eventType: string; tierBefore: string | null; rankBefore: string | null; tierAfter: string; rankAfter: string }): boolean {
+  return (
+    (r.eventType === "PROMOTED" || r.eventType === "DEMOTED") &&
+    r.tierBefore === r.tierAfter &&
+    r.rankBefore === r.rankAfter
+  );
+}
+
 /** Recent rank events across all tracked players (for dashboard). */
 export async function getRecentRankEvents(
   limit: number = 20,
   skipBackfill?: boolean
 ): Promise<RankEventDisplay[]> {
-  const rows = await prisma.rankEvent.findMany({
+  const fetched = await prisma.rankEvent.findMany({
     orderBy: { createdAt: "desc" },
-    take: limit,
+    take: limit * 3,
     include: {
       trackedPlayer: {
         select: { id: true, gameName: true, tagLine: true },
@@ -297,8 +309,10 @@ export async function getRecentRankEvents(
     },
   });
 
+  const rows = fetched.filter((r) => !isLegacyLpOnlyChange(r)).slice(0, limit);
+
   // If no events but we have snapshots, backfill once per process (e.g. production after deploy).
-  if (rows.length === 0 && !skipBackfill && !backfillAttempted) {
+  if (fetched.length === 0 && !skipBackfill && !backfillAttempted) {
     const snapshotCount = await prisma.rankSnapshot.count();
     if (snapshotCount > 0) {
       backfillAttempted = true;
@@ -329,16 +343,17 @@ export async function getRecentRankEventsForPlayer(
   trackedPlayerId: string,
   limit: number = 15
 ): Promise<RankEventDisplay[]> {
-  const rows = await prisma.rankEvent.findMany({
+  const fetched = await prisma.rankEvent.findMany({
     where: { trackedPlayerId },
     orderBy: { createdAt: "desc" },
-    take: limit,
+    take: limit * 3,
     include: {
       trackedPlayer: {
         select: { id: true, gameName: true, tagLine: true },
       },
     },
   });
+  const rows = fetched.filter((r) => !isLegacyLpOnlyChange(r)).slice(0, limit);
   return rows.map((r) => ({
     id: r.id,
     createdAt: r.createdAt,

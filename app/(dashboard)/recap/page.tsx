@@ -1,3 +1,4 @@
+import { formatShortDate } from "@/lib/utils";
 import Link from "next/link";
 import { getWeeklyRecap } from "@/lib/recap";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -23,17 +24,7 @@ function parseQueuePreset(value?: string): QueuePreset {
 }
 
 function formatWindow(window: { start: Date; end: Date }): string {
-  const start = window.start.toLocaleDateString("en-GB", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const end = window.end.toLocaleDateString("en-GB", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  return `${start} – ${end}`;
+  return `${formatShortDate(window.start)} – ${formatShortDate(window.end)} ${window.end.getFullYear()}`;
 }
 
 function PlayerLink({
