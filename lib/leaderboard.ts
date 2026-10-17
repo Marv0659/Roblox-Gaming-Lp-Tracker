@@ -229,6 +229,7 @@ export interface MatchDetailParticipant {
   id: string;
   gameName: string;
   tagLine: string;
+  championId: number;
   championName: string | null;
   kills: number;
   deaths: number;
@@ -270,6 +271,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail | nul
       id: p.trackedPlayer.id,
       gameName: p.trackedPlayer.gameName,
       tagLine: p.trackedPlayer.tagLine,
+      championId: p.championId,
       championName: p.championName,
       kills: p.kills,
       deaths: p.deaths,

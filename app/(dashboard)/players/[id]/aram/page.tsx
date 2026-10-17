@@ -5,87 +5,73 @@ import { getPlayerChallengeData } from "@/lib/riot/challenges";
 import {
   getAramChallengeProgress,
   groupAramProgress,
-  tierColorClass,
   TIER_ORDER,
   type AramChallengeProgress,
 } from "@/lib/aram-challenges";
+import { tierColor, tierHex } from "@/lib/tier-colors";
+import { cn, formatNumber } from "@/lib/utils";
+import { Eyebrow, Panel, SectionTitle, TierEmblem } from "@/components/lol";
 import { ViewSwitcher } from "../view-switcher";
 import { SyncButton } from "../sync-button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn, formatNumber } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-// ─── Progress bar component ───────────────────────────────────────────────────
+function pretty(level: string): string {
+  return level === "NONE" ? "Not started" : level.charAt(0) + level.slice(1).toLowerCase();
+}
 
-function ProgressBar({ value, max, className }: { value: number; max: number; className?: string }) {
+function nextTier(p: AramChallengeProgress): string {
+  const next = TIER_ORDER[p.tierIndex + 1];
+  return next ? pretty(next) : "Max";
+}
+
+function ProgressBar({ value, max, tier, className }: { value: number; max: number; tier: string; className?: string }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   return (
-    <div className={cn("h-1.5 w-full rounded-full bg-muted overflow-hidden", className)}>
-      <div
-        className="h-full rounded-full bg-primary transition-all"
-        style={{ width: `${pct}%` }}
-      />
+    <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-border", className)}>
+      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: tier === "NONE" ? "#7d8590" : tierHex(tier) }} />
     </div>
   );
 }
 
-// ─── Individual challenge row ─────────────────────────────────────────────────
-
 function ChallengeRow({ progress }: { progress: AramChallengeProgress }) {
-  const { definition, value, level, completed, nextThreshold, tierIndex } = progress;
-  const tierLabel = level === "NONE" ? "Not started" : level;
+  const { definition, value, level, completed, nextThreshold } = progress;
 
   return (
-    <li className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted/20 px-4 py-3">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-medium text-foreground">{definition.name}</p>
-          <p className="text-xs text-muted-foreground">{definition.description}</p>
+    <li className="flex flex-col gap-2 border-b border-[#1e2228] py-3 last:border-b-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-sm font-semibold">{definition.name}</span>
+          <span className="text-xs text-faint">{definition.description}</span>
         </div>
-        <Badge
-          variant={completed ? "default" : "secondary"}
+        <span
           className={cn(
-            "shrink-0 font-normal uppercase text-xs",
-            completed && "bg-purple-500/90 text-white hover:bg-purple-500"
+            "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide",
+            completed ? "bg-brand/15 text-brand" : level === "NONE" ? "bg-surface-2 text-faint" : cn("bg-surface-2", tierColor(level))
           )}
         >
-          {tierLabel}
-        </Badge>
+          {completed ? "Done" : pretty(level)}
+        </span>
       </div>
-
-      {!completed && (
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
+      {completed ? (
+        <span className="text-xs text-muted-foreground">{formatNumber(value)} total · maxed out</span>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <div className="flex justify-between gap-2 text-xs text-muted-foreground tabular-nums">
             <span>
               {formatNumber(value)}
-              {nextThreshold != null ? ` / ${formatNumber(nextThreshold)}` : ""}
+              {nextThreshold != null && <span className="text-faint"> / {formatNumber(nextThreshold)}</span>}
             </span>
-            <span>
-              Next: {TIER_ORDER[tierIndex + 1] ?? "MAX"}
-            </span>
+            <span className="text-faint">Next: {nextTier(progress)}</span>
           </div>
-          <ProgressBar
-            value={value}
-            max={nextThreshold ?? value}
-          />
+          <ProgressBar value={value} max={nextThreshold ?? value} tier={level} />
         </div>
-      )}
-
-      {completed && (
-        <p className="text-xs text-purple-400">
-          ✓ Completed — {formatNumber(value)} total
-        </p>
       )}
     </li>
   );
 }
 
-// ─── Group card ───────────────────────────────────────────────────────────────
-
-function GroupCard({
+function GroupPanel({
   title,
   groupProgress,
   challenges,
@@ -95,46 +81,34 @@ function GroupCard({
   challenges: AramChallengeProgress[];
 }) {
   const completedCount = challenges.filter((c) => c.completed).length;
-  const totalCount = challenges.length;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-base font-semibold">{title}</h3>
-          <span className="text-xs text-muted-foreground">
-            {completedCount}/{totalCount} completed
+    <Panel aria-label={title} className="flex min-w-0 flex-col gap-2 p-5">
+      <div className="flex items-baseline justify-between gap-2">
+        <SectionTitle>{title}</SectionTitle>
+        <span className="text-xs text-faint tabular-nums">
+          {completedCount}/{challenges.length} done
+        </span>
+      </div>
+      {groupProgress && (
+        <div className="flex items-center gap-3">
+          <TierEmblem tier={groupProgress.level === "NONE" ? null : groupProgress.level} size={28} />
+          <span className={cn("font-display text-xl font-bold", tierColor(groupProgress.level))}>
+            {pretty(groupProgress.level)}
           </span>
+          <span className="text-xs text-faint tabular-nums">{formatNumber(groupProgress.value)} pts</span>
         </div>
-        {groupProgress && (
-          <div className="flex items-center gap-2">
-            <span className={cn("text-sm font-medium", tierColorClass(groupProgress.level))}>
-              {groupProgress.level === "NONE" ? "No progress" : groupProgress.level}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {formatNumber(groupProgress.value)} pts
-            </span>
-          </div>
-        )}
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-2">
-          {challenges.map((c) => (
-            <ChallengeRow key={c.definition.id} progress={c} />
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+      )}
+      <ul className="flex flex-col">
+        {challenges.map((c) => (
+          <ChallengeRow key={c.definition.id} progress={c} />
+        ))}
+      </ul>
+    </Panel>
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-export default async function AramPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function AramPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const player = await prisma.trackedPlayer.findUnique({
@@ -143,7 +117,7 @@ export default async function AramPage({
   });
   if (!player) notFound();
 
-  // Fetch live from Riot challenges-v1 — null if player has no data or API error
+  // Fetched live from Riot challenges-v1; null if the player has no data or the API errors.
   const challengeData = await getPlayerChallengeData(player.region, player.puuid);
   const allProgress = getAramChallengeProgress(challengeData);
   const { authority, warriorGroup, finesseGroup, championGroup, warrior, finesse, champion } =
@@ -153,108 +127,75 @@ export default async function AramPage({
   const godUnlocked = authority?.completed ?? false;
 
   return (
-    <div className="p-4 sm:p-6 md:p-8">
-      {/* Header */}
-      <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <Button variant="ghost" size="sm" className="mb-2 -ml-2 text-muted-foreground" asChild>
-            <Link href="/players">← Players</Link>
-          </Button>
-          <h1 className="text-xl font-bold tracking-tight break-words sm:text-2xl">
-            {player.gameName}
-            <span className="font-normal text-muted-foreground">#{player.tagLine}</span>
+    <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-6 sm:px-6 md:px-10 md:py-8">
+      <Link href={`/players/${player.id}`} className="text-[13px] text-muted-foreground hover:text-foreground">
+        ← {player.gameName}
+      </Link>
+
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <Eyebrow>ARAM challenges</Eyebrow>
+          <h1 className="font-display text-4xl font-bold uppercase leading-none tracking-wide break-words md:text-[44px]">
+            {player.gameName} <span className="font-semibold text-faint">#{player.tagLine}</span>
           </h1>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <ViewSwitcher playerId={player.id} />
+        <div className="flex flex-wrap items-center gap-2.5">
           <SyncButton playerId={player.id} />
+          <ViewSwitcher playerId={player.id} />
         </div>
-      </div>
+      </header>
 
-      {/* ARAM God title banner */}
-      <div
-        className={cn(
-          "mb-6 relative overflow-hidden rounded-xl border px-5 py-5 sm:py-6",
-          godUnlocked
-            ? "border-yellow-500/50 bg-gradient-to-r from-yellow-500/20 via-yellow-400/10 to-yellow-500/20 shadow-[0_0_30px_-5px_var(--color-yellow-500)]"
-            : "border-border bg-muted/20"
-        )}
+      <Panel
+        aria-label="ARAM God title"
+        className={cn("flex flex-wrap items-center justify-between gap-5 p-5 md:p-6", godUnlocked && "border-brand/60")}
       >
-        {godUnlocked && (
-          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-yellow-400/20 blur-3xl animate-pulse" />
-        )}
-        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2">
-              <h2 className={cn("text-lg font-bold tracking-tight", godUnlocked ? "text-yellow-500 sm:text-2xl" : "text-foreground")}>
-                {godUnlocked ? "👑 ARAM GOD" : "ARAM God Title Progress"}
-              </h2>
-              {godUnlocked && (
-                <Badge className="bg-yellow-500 text-black hover:bg-yellow-400">UNLOCKED</Badge>
-              )}
-            </div>
-            <p className={cn("text-sm", godUnlocked ? "text-yellow-500/80 font-medium" : "text-muted-foreground")}>
-              {godUnlocked
-                ? `${player.gameName} has achieved the legendary ARAM God title.`
-                : "Reach MASTER in ARAM Authority to unlock the ARAM God title."}
-            </p>
-          </div>
-          {authority && (
-            <div className="mt-2 sm:mt-0 text-right">
-              <span className={cn("text-xl font-bold", tierColorClass(authority.level))}>
-                {authority.level === "NONE" ? "Unranked" : authority.level}
+        <div className="flex min-w-0 flex-[1_1_260px] flex-col gap-1.5">
+          <Eyebrow className={godUnlocked ? "text-brand" : undefined}>
+            {godUnlocked ? "Title unlocked" : "Title progress"}
+          </Eyebrow>
+          <span className={cn("font-display text-3xl font-bold uppercase leading-none", godUnlocked ? "text-brand" : "text-foreground")}>
+            ARAM God
+          </span>
+          <p className="text-sm text-muted-foreground">
+            {godUnlocked
+              ? `${player.gameName} holds the ARAM God title.`
+              : "Reach Master in ARAM Authority to unlock the ARAM God title."}
+          </p>
+        </div>
+        {authority && (
+          <div className="flex min-w-0 flex-[1_1_240px] items-center gap-4 rounded-xl bg-surface-2 p-4">
+            <TierEmblem tier={authority.level === "NONE" ? null : authority.level} size={48} />
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <Eyebrow>ARAM Authority</Eyebrow>
+              <span className={cn("font-display text-2xl font-bold leading-none", tierColor(authority.level))}>
+                {pretty(authority.level)}
               </span>
-              <p className="text-xs text-muted-foreground">
+              {authority.nextThreshold != null && (
+                <ProgressBar value={authority.value} max={authority.nextThreshold} tier={authority.level} />
+              )}
+              <span className="text-xs text-faint tabular-nums">
                 {formatNumber(authority.value)} pts
                 {authority.nextThreshold != null &&
-                  ` / ${formatNumber(authority.nextThreshold)} for ${TIER_ORDER[authority.tierIndex + 1]}`}
-              </p>
-              {authority.nextThreshold != null && (
-                <ProgressBar
-                  className="mt-1 w-32"
-                  value={authority.value}
-                  max={authority.nextThreshold}
-                />
-              )}
+                  ` / ${formatNumber(authority.nextThreshold)} for ${nextTier(authority)}`}
+              </span>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
+      </Panel>
 
-      {/* No data fallback */}
-      {!hasAnyData && (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">
-              No challenge data found for this player.
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Challenge data is fetched live from Riot. The player may not have started any ARAM
-              challenges yet, or the API key may not have the{" "}
-              <code className="text-xs">lol-challenges-v1</code> permission.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Challenge group cards */}
-      {hasAnyData && (
-        <div className="grid gap-6 md:grid-cols-3">
-          <GroupCard
-            title="⚔️ ARAM Warrior"
-            groupProgress={warriorGroup}
-            challenges={warrior}
-          />
-          <GroupCard
-            title="🎯 ARAM Finesse"
-            groupProgress={finesseGroup}
-            challenges={finesse}
-          />
-          <GroupCard
-            title="🏅 ARAM Champion"
-            groupProgress={championGroup}
-            challenges={champion}
-          />
+      {!hasAnyData ? (
+        <Panel className="border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
+          <p>No challenge data found for this player.</p>
+          <p className="mt-1 text-xs text-faint">
+            Challenge data comes live from Riot. The player may not have started any ARAM challenges, or the API key
+            lacks the <code>lol-challenges-v1</code> permission.
+          </p>
+        </Panel>
+      ) : (
+        <div className="grid items-start gap-3 md:grid-cols-2 lg:grid-cols-3 md:gap-4">
+          <GroupPanel title="Warrior" groupProgress={warriorGroup} challenges={warrior} />
+          <GroupPanel title="Finesse" groupProgress={finesseGroup} challenges={finesse} />
+          <GroupPanel title="Champion" groupProgress={championGroup} challenges={champion} />
         </div>
       )}
     </div>

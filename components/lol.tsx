@@ -2,6 +2,7 @@
  * Small shared building blocks for the redesigned pages: tier emblem, champion icon,
  * last-games strip, win/loss bar, section headings and stat tiles.
  */
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { tierHex } from "@/lib/tier-colors";
 
@@ -187,5 +188,34 @@ export function ResultPill({ win, remake }: { win: boolean; remake?: boolean }) 
     >
       {remake ? "Remake" : win ? "Win" : "Loss"}
     </span>
+  );
+}
+
+/** Pill-style link group for switching a page filter (queue, region, period) via the URL. */
+export function Segmented({
+  label,
+  options,
+  className,
+}: {
+  label: string;
+  options: { label: string; href: string; active: boolean }[];
+  className?: string;
+}) {
+  return (
+    <nav aria-label={label} className={cn("flex gap-1 rounded-[10px] border border-border bg-card p-1", className)}>
+      {options.map((o) => (
+        <Link
+          key={o.href}
+          href={o.href}
+          aria-current={o.active ? "page" : undefined}
+          className={cn(
+            "flex min-h-10 items-center rounded-[7px] px-4 text-sm whitespace-nowrap transition-colors",
+            o.active ? "bg-foreground font-semibold text-background" : "font-medium text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {o.label}
+        </Link>
+      ))}
+    </nav>
   );
 }

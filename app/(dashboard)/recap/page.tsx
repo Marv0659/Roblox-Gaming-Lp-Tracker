@@ -1,14 +1,13 @@
-import { formatShortDate } from "@/lib/utils";
 import Link from "next/link";
-import { getWeeklyRecap } from "@/lib/recap";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { cn, formatDate, formatShortDate } from "@/lib/utils";
+import { getWeeklyRecap, type RecapHighlight, type StinkerEntry } from "@/lib/recap";
 import {
   FLEX_QUEUE,
   QUEUE_LABEL_BY_TYPE,
   SOLO_QUEUE,
   type RankedQueueType,
 } from "@/lib/leaderboard";
+import { Eyebrow, Panel, SectionTitle, Segmented } from "@/components/lol";
 
 export const dynamic = "force-dynamic";
 
@@ -19,32 +18,81 @@ const QUEUE_PRESET_TO_TYPE: Record<QueuePreset, RankedQueueType> = {
   flex: FLEX_QUEUE,
 };
 
+const VERDICT_TONE: Record<string, string> = {
+  YES: "text-win",
+  ONLY_WITH_SUPERVISION: "text-brand",
+  ONLY_IF_NOT_LOCKING_THAT_CHAMP: "text-[#c9aeff]",
+  NO: "text-loss",
+  ABSOLUTELY_NOT: "text-loss",
+};
+
 function parseQueuePreset(value?: string): QueuePreset {
   return value === "flex" ? "flex" : "solo";
 }
 
 function formatWindow(window: { start: Date; end: Date }): string {
-  return `${formatShortDate(window.start)} – ${formatShortDate(window.end)} ${window.end.getFullYear()}`;
+  return `${formatShortDate(window.start)} – ${formatShortDate(window.end)} ${formatDate(window.end).slice(-4)}`;
 }
 
-function PlayerLink({
-  playerId,
-  gameName,
-  tagLine,
-  children,
+function verdictText(label: string, badChampionName?: string): string {
+  if (label === "ONLY_IF_NOT_LOCKING_THAT_CHAMP" && badChampionName) return `Not on ${badChampionName}`;
+  return label.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+}
+
+function PlayerName({ playerId, gameName, tagLine }: { playerId: string; gameName: string; tagLine: string }) {
+  return (
+    <Link href={`/players/${playerId}`} className="truncate text-[17px] font-semibold hover:underline">
+      {gameName} <span className="font-medium text-faint">#{tagLine}</span>
+    </Link>
+  );
+}
+
+function HighlightCard({
+  title,
+  highlight,
+  tone,
+  empty,
 }: {
-  playerId: string;
-  gameName: string;
-  tagLine: string;
-  children?: React.ReactNode;
+  title: string;
+  highlight: RecapHighlight | null;
+  tone?: string;
+  empty: string;
 }) {
   return (
-    <Link
-      href={`/players/${playerId}`}
-      className="font-medium text-foreground hover:text-primary"
-    >
-      {children ?? `${gameName}#${tagLine}`}
-    </Link>
+    <Panel className="flex min-w-0 flex-col gap-2 p-5">
+      <Eyebrow className={tone}>{title}</Eyebrow>
+      {highlight ? (
+        <>
+          <PlayerName {...highlight} />
+          <span className={cn("font-display text-3xl font-bold leading-none tabular-nums", tone)}>
+            {highlight.label ?? highlight.value}
+          </span>
+        </>
+      ) : (
+        <span className="font-display text-2xl font-semibold text-muted-foreground">{empty}</span>
+      )}
+    </Panel>
+  );
+}
+
+function StinkerLine({ label, entry, stat }: { label: string; entry: StinkerEntry; stat: string }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Eyebrow>{label}</Eyebrow>
+      <p className="text-sm">
+        <Link href={`/players/${entry.playerId}`} className="font-semibold hover:underline">
+          {entry.gameName}
+        </Link>
+        {entry.championName && <span className="text-muted-foreground"> on {entry.championName}</span>}
+      </p>
+      <Link
+        href={`/matches/${entry.matchDbId}`}
+        className="font-display text-2xl font-bold leading-none text-loss tabular-nums hover:underline"
+      >
+        {entry.kills} / {entry.deaths} / {entry.assists}
+        <span className="ml-2 font-sans text-xs font-normal text-muted-foreground">{stat}</span>
+      </Link>
+    </div>
   );
 }
 
@@ -62,357 +110,127 @@ export default async function RecapPage({
     .filter((p) => p.gamesPlayed > 0)
     .sort((a, b) => b.gamesPlayed - a.gamesPlayed)
     .slice(0, 5);
+  const { worstKda, mostDeaths } = recap.stinkerOfTheWeek;
+  const loser = recap.biggestLpLoser && recap.biggestLpLoser.value < 0 ? recap.biggestLpLoser : null;
 
   return (
-    <div className="p-6 md:p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Weekly recap
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {formatWindow(recap.window)} · {QUEUE_LABEL_BY_TYPE[queueType]} queue, from synced data only
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Link
-            href="/recap?queue=solo"
-            className={`rounded-md px-2 py-1 text-sm font-medium transition-colors ${queuePreset === "solo" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-          >
-            Solo / Duo
-          </Link>
-          <Link
-            href="/recap?queue=flex"
-            className={`rounded-md px-2 py-1 text-sm font-medium transition-colors ${queuePreset === "flex" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-          >
-            Flex 5v5
-          </Link>
+    <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-6 sm:px-6 md:px-10 md:py-8">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="font-display text-4xl font-bold uppercase leading-none tracking-wide md:text-[44px]">
+            This week
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {formatWindow(recap.window)} · {QUEUE_LABEL_BY_TYPE[queueType]} · synced games only
+          </p>
         </div>
-      </div>
+        <Segmented
+          label="Queue"
+          options={[
+            { label: "Solo / Duo", href: "/recap?queue=solo", active: queuePreset === "solo" },
+            { label: "Flex", href: "/recap?queue=flex", active: queuePreset === "flex" },
+          ]}
+        />
+      </header>
 
       {recap.playerStats.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              No tracked players or no activity in this window. Add players and
-              sync to see recaps.
-            </p>
-          </CardContent>
-        </Card>
+        <Panel className="border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
+          No tracked players or no activity this week. Add players and sync to see the recap.
+        </Panel>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {recap.biggestLpGainer && (
-            <Card className="order-1 lg:order-1">
-              <CardHeader className="pb-2">
-                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                  Biggest LP gainer
-                </h2>
-              </CardHeader>
-              <CardContent>
-                <PlayerLink
-                  playerId={recap.biggestLpGainer.playerId}
-                  gameName={recap.biggestLpGainer.gameName}
-                  tagLine={recap.biggestLpGainer.tagLine}
-                />
-                <p className="mt-1 text-lg font-semibold text-emerald-500">
-                  {recap.biggestLpGainer.label}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+        <>
+          <section aria-label="Highlights" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 md:gap-4">
+            <HighlightCard title="Biggest LP gain" highlight={recap.biggestLpGainer} tone="text-win" empty="Nobody climbed" />
+            <HighlightCard title="Biggest LP loss" highlight={loser} tone="text-loss" empty="No bums yet" />
+            <HighlightCard title="Most games" highlight={recap.mostGames} empty="Nobody played" />
+            <HighlightCard title="Best win rate" highlight={recap.bestWinrate} tone="text-win" empty="Not enough games" />
+            <HighlightCard title="Worst win rate" highlight={recap.worstWinrate} tone="text-loss" empty="Not enough games" />
+            <HighlightCard title="Longest win streak" highlight={recap.longestWinStreak} tone="text-brand" empty="No streaks" />
+          </section>
 
-          <Card className="order-2 lg:order-2">
-            <CardHeader className="pb-2">
-              <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                Biggest LP loser
-              </h2>
-            </CardHeader>
-            <CardContent>
-              {recap.biggestLpLoser && recap.biggestLpLoser.value < 0 ? (
-                <>
-                  <PlayerLink
-                    playerId={recap.biggestLpLoser.playerId}
-                    gameName={recap.biggestLpLoser.gameName}
-                    tagLine={recap.biggestLpLoser.tagLine}
-                  />
-                  <p className="mt-1 text-lg font-semibold text-destructive">
-                    {recap.biggestLpLoser.label}
-                  </p>
-                </>
-              ) : (
-                <p className="font-medium text-muted-foreground">
-                  No bums yet
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {recap.bestWinrate && (
-            <Card className="order-3 lg:order-4">
-              <CardHeader className="pb-2">
-                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                  Best winrate this week
-                </h2>
-              </CardHeader>
-              <CardContent>
-                <PlayerLink
-                  playerId={recap.bestWinrate.playerId}
-                  gameName={recap.bestWinrate.gameName}
-                  tagLine={recap.bestWinrate.tagLine}
-                />
-                <p className="mt-1 text-lg font-semibold text-foreground">
-                  {recap.bestWinrate.label}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {recap.worstWinrate && (
-            <Card className="order-4 lg:order-5">
-              <CardHeader className="pb-2">
-                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                  Worst winrate this week
-                </h2>
-              </CardHeader>
-              <CardContent>
-                <PlayerLink
-                  playerId={recap.worstWinrate.playerId}
-                  gameName={recap.worstWinrate.gameName}
-                  tagLine={recap.worstWinrate.tagLine}
-                />
-                <p className="mt-1 text-lg font-semibold text-muted-foreground">
-                  {recap.worstWinrate.label}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {recap.mostGames && (
-            <Card className="order-5 lg:order-3">
-              <CardHeader className="pb-2">
-                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                  Most games played
-                </h2>
-              </CardHeader>
-              <CardContent>
-                <PlayerLink
-                  playerId={recap.mostGames.playerId}
-                  gameName={recap.mostGames.gameName}
-                  tagLine={recap.mostGames.tagLine}
-                />
-                <p className="mt-1 text-lg font-semibold text-foreground">
-                  {recap.mostGames.label}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {recap.longestWinStreak && (
-            <Card className="order-6 lg:order-6">
-              <CardHeader className="pb-2">
-                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                  Longest win streak
-                </h2>
-              </CardHeader>
-              <CardContent>
-                <PlayerLink
-                  playerId={recap.longestWinStreak.playerId}
-                  gameName={recap.longestWinStreak.gameName}
-                  tagLine={recap.longestWinStreak.tagLine}
-                />
-                <p className="mt-1 text-lg font-semibold text-foreground">
-                  {recap.longestWinStreak.label}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {(recap.roughWeek || recap.stinkerOfTheWeek.worstKda || recap.stinkerOfTheWeek.mostDeaths) && (
-            <div className="order-7 sm:col-span-2 lg:col-span-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+          {(recap.roughWeek || worstKda || mostDeaths) && (
+            <div className="grid gap-3 md:grid-cols-2 md:gap-4">
               {recap.roughWeek && (
-                <Card className="flex h-full flex-col border-amber-500/30 bg-amber-500/5">
-                  <CardHeader className="pb-2">
-                    <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                      Rough week candidate
-                    </h2>
-                  </CardHeader>
-                  <CardContent className="flex flex-1 flex-col items-start">
-                    <PlayerLink
-                      playerId={recap.roughWeek.playerId}
-                      gameName={recap.roughWeek.gameName}
-                      tagLine={recap.roughWeek.tagLine}
-                    />
-                    <p className="mt-1 text-muted-foreground">
-                      {recap.roughWeek.reason}
-                      {recap.roughWeek.lpChange != null && recap.roughWeek.lpChange < 0 && (
-                        <> · {recap.roughWeek.lpChange} LP</>
-                      )}
-                    </p>
-                    <div className="mt-auto pt-4 w-full">
-                      <Badge variant="secondary" className="font-normal">
-                        Played a lot, didn’t go so well
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+                <Panel aria-label="Rough week" className="flex flex-col gap-2 border-brand/40 p-5">
+                  <Eyebrow className="text-brand">Rough week</Eyebrow>
+                  <PlayerName {...recap.roughWeek} />
+                  <p className="text-sm text-[#cdd2d9]">
+                    {recap.roughWeek.reason}
+                    {recap.roughWeek.lpChange != null && recap.roughWeek.lpChange < 0 && (
+                      <span className="text-loss"> · {recap.roughWeek.lpChange} LP</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-faint">Played a lot, didn’t go so well.</p>
+                </Panel>
               )}
-
-              {(recap.stinkerOfTheWeek.worstKda || recap.stinkerOfTheWeek.mostDeaths) && (
-                <Card className="flex h-full flex-col border-rose-500/30 bg-rose-500/5">
-                  <CardHeader className="pb-2">
-                    <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                      💩 Stinker of the Week 💩
-                    </h2>
-                  </CardHeader>
-                  <CardContent className="flex flex-1 flex-col space-y-4">
-                    {recap.stinkerOfTheWeek.worstKda && (
-                      <div>
-                        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Worst KDA in a game</p>
-                        <p className="text-sm">
-                          <PlayerLink
-                            playerId={recap.stinkerOfTheWeek.worstKda.playerId}
-                            gameName={recap.stinkerOfTheWeek.worstKda.gameName}
-                            tagLine={recap.stinkerOfTheWeek.worstKda.tagLine}
-                          />
-                          {recap.stinkerOfTheWeek.worstKda.championName && (
-                            <span className="text-muted-foreground"> on {recap.stinkerOfTheWeek.worstKda.championName}</span>
-                          )}
-                          {" — "}
-                          <Link
-                            href={`/matches/${recap.stinkerOfTheWeek.worstKda.matchDbId}`}
-                            className="font-semibold text-destructive hover:underline"
-                          >
-                            {recap.stinkerOfTheWeek.worstKda.kills}/
-                            {recap.stinkerOfTheWeek.worstKda.deaths}/
-                            {recap.stinkerOfTheWeek.worstKda.assists}
-                            {" "}
-                            ({recap.stinkerOfTheWeek.worstKda.kda.toFixed(2)} KDA)
-                          </Link>
-                        </p>
-                      </div>
-                    )}
-                    {recap.stinkerOfTheWeek.mostDeaths && (
-                      <div>
-                        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Most deaths in a game</p>
-                        <p className="text-sm">
-                          <PlayerLink
-                            playerId={recap.stinkerOfTheWeek.mostDeaths.playerId}
-                            gameName={recap.stinkerOfTheWeek.mostDeaths.gameName}
-                            tagLine={recap.stinkerOfTheWeek.mostDeaths.tagLine}
-                          />
-                          {recap.stinkerOfTheWeek.mostDeaths.championName && (
-                            <span className="text-muted-foreground"> on {recap.stinkerOfTheWeek.mostDeaths.championName}</span>
-                          )}
-                          {" — "}
-                          <Link
-                            href={`/matches/${recap.stinkerOfTheWeek.mostDeaths.matchDbId}`}
-                            className="font-semibold text-destructive hover:underline"
-                          >
-                            {recap.stinkerOfTheWeek.mostDeaths.kills}/
-                            {recap.stinkerOfTheWeek.mostDeaths.deaths}/
-                            {recap.stinkerOfTheWeek.mostDeaths.assists}
-                            {" "}
-                            ({recap.stinkerOfTheWeek.mostDeaths.deaths} deaths 💀)
-                          </Link>
-                        </p>
-                      </div>
-                    )}
-                    <div className="mt-auto pt-4">
-                      <Badge variant="secondary" className="font-normal w-fit">
-                        Yeah mid fed guys...
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+              {(worstKda || mostDeaths) && (
+                <Panel aria-label="Stinker of the week" className="flex flex-col gap-4 border-loss-solid/40 p-5">
+                  <Eyebrow className="text-loss">Stinker of the week</Eyebrow>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {worstKda && <StinkerLine label="Worst KDA" entry={worstKda} stat={`${worstKda.kda.toFixed(2)} KDA`} />}
+                    {mostDeaths && <StinkerLine label="Most deaths" entry={mostDeaths} stat={`${mostDeaths.deaths} deaths`} />}
+                  </div>
+                  <p className="text-xs text-faint">Yeah, mid fed guys…</p>
+                </Panel>
               )}
             </div>
           )}
 
           {topGrinders.length > 0 && (
-            <Card className="order-8 sm:col-span-2 lg:col-span-3">
-              <CardHeader className="pb-2">
-                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                  On the grind this week!
-                </h2>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                  {topGrinders.map((p, i) => (
-                    <div
-                      key={p.playerId}
-                      className="flex flex-col items-center justify-center rounded-lg border bg-muted/30 p-4 text-center transition-colors hover:bg-muted/50"
-                    >
-                      <span className="text-3xl font-bold text-foreground">
-                        {p.gamesPlayed}
-                      </span>
-                      <span className="mb-2 mt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Games
-                      </span>
-                      <PlayerLink
-                        playerId={p.playerId}
-                        gameName={p.gameName}
-                        tagLine={p.tagLine}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <Panel aria-label="Most games" className="flex flex-col gap-3 p-5">
+              <SectionTitle>On the grind</SectionTitle>
+              <ol className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {topGrinders.map((p, i) => (
+                  <li key={p.playerId} className="flex min-w-0 flex-col gap-1 rounded-xl bg-surface-2 p-4">
+                    <span className="font-display text-sm font-bold text-faint">#{i + 1}</span>
+                    <span className="font-display text-3xl font-bold leading-none tabular-nums">{p.gamesPlayed}</span>
+                    <span className="text-xs text-faint">
+                      games{p.winrate != null ? ` · ${Math.round(p.winrate)}%` : ""}
+                    </span>
+                    <Link href={`/players/${p.playerId}`} className="truncate text-sm font-semibold hover:underline">
+                      {p.gameName}
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            </Panel>
           )}
 
           {recap.queueRecommendations && recap.queueRecommendations.length > 0 && (
-            <Card className="order-9 sm:col-span-2 lg:col-span-3">
-              <CardHeader className="pb-2">
-                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                  Should they queue? (all tracked)
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Light-weight, rule-based recommendations for all tracked players.
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-muted-foreground">
-                        <th className="pb-2 pr-4">Player</th>
-                        <th className="pb-2 pr-4">Label</th>
-                        <th className="pb-2 pr-4">Score</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recap.queueRecommendations
-                        .slice()
-                        .sort((a, b) => b.score - a.score)
-                        .map((r) => (
-                          <tr
-                            key={r.playerId}
-                            className="border-b border-border text-muted-foreground last:border-b-0"
-                          >
-                            <td className="py-2 pr-4">
-                              <PlayerLink
-                                playerId={r.playerId}
-                                gameName={r.gameName}
-                                tagLine={r.tagLine}
-                              />
-                            </td>
-                            <td className="py-2 pr-4">
-                              <span className="font-medium text-foreground">
-                                {r.label === "ONLY_IF_NOT_LOCKING_THAT_CHAMP" && r.badChampionName
-                                  ? `ONLY IF NOT LOCKING ${r.badChampionName}`
-                                  : r.label.replace(/_/g, " ")}
-                              </span>
-                            </td>
-                            <td className="py-2 pr-4">
-                              {Math.round(r.score)} / 100
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            <Panel aria-label="Should they queue" className="overflow-hidden">
+              <div className="flex flex-col gap-1 border-b border-border px-5 py-4">
+                <SectionTitle>Should they queue?</SectionTitle>
+                <p className="text-xs text-faint">Rule-based verdicts for every tracked player.</p>
+              </div>
+              <ul>
+                {recap.queueRecommendations
+                  .slice()
+                  .sort((a, b) => b.score - a.score)
+                  .map((r) => (
+                    <li
+                      key={r.playerId}
+                      className="flex min-h-12 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-[#1e2228] px-5 py-2.5 last:border-b-0"
+                    >
+                      <Link href={`/players/${r.playerId}`} className="min-w-0 truncate text-sm font-semibold hover:underline">
+                        {r.gameName} <span className="font-medium text-faint">#{r.tagLine}</span>
+                      </Link>
+                      <span className="flex shrink-0 items-baseline gap-3">
+                        <span
+                          className={cn(
+                            "font-display text-lg font-bold uppercase",
+                            VERDICT_TONE[r.label] ?? "text-foreground"
+                          )}
+                        >
+                          {verdictText(r.label, r.badChampionName)}
+                        </span>
+                        <span className="w-14 text-right text-xs tabular-nums text-faint">{Math.round(r.score)} / 100</span>
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </Panel>
           )}
-        </div>
+        </>
       )}
     </div>
   );

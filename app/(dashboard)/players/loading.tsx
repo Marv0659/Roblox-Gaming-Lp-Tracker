@@ -1,30 +1,15 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function PlayersLoading() {
+export default function Loading() {
   return (
-    <div className="p-6 md:p-8">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="mt-2 h-4 w-72" />
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-24" />
-          <Skeleton className="h-9 w-28" />
-        </div>
+    <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-6 sm:px-6 md:px-10 md:py-8">
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-10 w-56" />
+        <Skeleton className="h-4 w-full max-w-sm" />
       </div>
-      <div className="space-y-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
-            <CardContent className="flex flex-row items-center justify-between px-4 py-3">
-              <div className="flex gap-2">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-5 w-12 rounded-full" />
-              </div>
-              <Skeleton className="h-4 w-24" />
-            </CardContent>
-          </Card>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 md:gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-32 rounded-2xl" />
         ))}
       </div>
     </div>

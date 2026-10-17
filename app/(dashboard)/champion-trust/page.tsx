@@ -2,146 +2,167 @@ import Link from "next/link";
 import { getGlobalChampionTrustLeaderboards } from "@/lib/champion-trust-leaderboard";
 import type { GlobalChampionTrustRow } from "@/lib/champion-trust-leaderboard";
 import type { ChampionTrustLabel } from "@/lib/champion-trust";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { getChampionIdsByName } from "@/lib/champion-ids";
 import { cn } from "@/lib/utils";
+import { ChampionIcon, Eyebrow, Panel, SectionTitle } from "@/components/lol";
 
 export const dynamic = "force-dynamic";
 
-function ChampionTrustBadge({ label }: { label: ChampionTrustLabel }) {
-  const styles: Record<ChampionTrustLabel, string> = {
-    TRUSTED: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-    COINFLIP: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30",
-    DO_NOT_ALLOW: "bg-destructive/20 text-destructive border-destructive/30",
-    FAKE_COMFORT_PICK: "bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30",
-    POCKET_PICK: "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30",
-    INSUFFICIENT_DATA: "bg-muted text-muted-foreground border-border",
-  };
-  return (
-    <Badge
-      variant="outline"
-      className={cn("text-[10px] font-medium uppercase tracking-wide", styles[label])}
-    >
-      {label.replace(/_/g, " ")}
-    </Badge>
-  );
+const TRUST: Record<ChampionTrustLabel, { label: string; className: string }> = {
+  TRUSTED: { label: "Trusted", className: "bg-win-soft text-win" },
+  POCKET_PICK: { label: "Pocket pick", className: "bg-[#b48cff]/18 text-[#c9aeff]" },
+  COINFLIP: { label: "Coinflip", className: "bg-brand/15 text-brand" },
+  FAKE_COMFORT_PICK: { label: "Fake comfort", className: "bg-loss-soft text-loss" },
+  DO_NOT_ALLOW: { label: "Do not allow", className: "bg-loss-soft text-loss" },
+  INSUFFICIENT_DATA: { label: "Too early", className: "bg-surface-2 text-muted-foreground" },
+};
+
+function wrTone(winrate: number): string {
+  if (winrate >= 55) return "text-win";
+  if (winrate < 45) return "text-loss";
+  return "text-foreground";
 }
 
-function TrustRow({ row }: { row: GlobalChampionTrustRow }) {
+function TrustRow({ row, championId }: { row: GlobalChampionTrustRow; championId?: number }) {
+  const t = TRUST[row.trustLabel];
   return (
     <Link
       href={`/players/${row.playerId}`}
-      className="grid gap-1 rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm transition-colors hover:bg-muted/40 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      title={row.shortReason}
+      className="flex min-h-14 items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-2/60"
     >
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <span className="font-medium text-foreground">
-          {row.gameName}#{row.tagLine}
+      <ChampionIcon championId={championId} championName={row.championName} className="size-10" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="truncate text-sm">
+          <span className="font-semibold">{row.championName}</span>
+          <span className="text-faint"> · {row.gameName}</span>
         </span>
-        <span className="text-muted-foreground">·</span>
-        <span className="font-medium text-foreground">{row.championName}</span>
-        <ChampionTrustBadge label={row.trustLabel} />
+        <span className="text-xs text-faint">
+          {row.wins}W {row.losses}L · {row.avgKda.toFixed(2)} KDA
+          {row.recentWinrate != null && ` · recent ${Math.round(row.recentWinrate)}%`}
+        </span>
       </div>
-      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:justify-end">
-        <span className="tabular-nums">{row.games} games</span>
-        <span className="font-medium text-foreground">{row.winrate.toFixed(0)}% WR</span>
-        {row.recentWinrate != null && (
-          <span>Recent {row.recentWinrate.toFixed(0)}%</span>
-        )}
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <span className={cn("font-display text-xl font-bold leading-none tabular-nums", wrTone(row.winrate))}>
+          {Math.round(row.winrate)}%
+        </span>
+        <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide", t.className)}>
+          {t.label}
+        </span>
       </div>
     </Link>
   );
 }
 
-function CategoryCard({
+function CategoryPanel({
   title,
+  eyebrow,
+  eyebrowClass,
   description,
   rows,
   emptyMessage,
+  championIds,
 }: {
   title: string;
+  eyebrow: string;
+  eyebrowClass: string;
   description: string;
   rows: GlobalChampionTrustRow[];
   emptyMessage: string;
+  championIds: Record<string, number>;
 }) {
   return (
-    <Card className="flex h-full flex-col">
-      <CardHeader className="shrink-0">
-        <h2 className="text-base font-semibold sm:text-lg">{title}</h2>
-        <p className="text-xs text-muted-foreground sm:text-sm">{description}</p>
-      </CardHeader>
-      <CardContent className="min-h-0 flex-1">
-        {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
-        ) : (
-          <ul className="space-y-1.5">
-            {rows.map((row, i) => (
-              <li key={`${row.playerId}-${row.championName}-${i}`}>
-                <TrustRow row={row} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+    <Panel aria-label={title} className="flex min-w-0 flex-col gap-3 p-5">
+      <div className="flex flex-col gap-1">
+        <Eyebrow className={eyebrowClass}>{eyebrow}</Eyebrow>
+        <SectionTitle>{title}</SectionTitle>
+        <p className="text-xs text-faint">{description}</p>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+      ) : (
+        <ul className="-mx-2 flex flex-col">
+          {rows.map((row, i) => (
+            <li key={`${row.playerId}-${row.championName}-${i}`}>
+              <TrustRow row={row} championId={championIds[row.championName]} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
   );
 }
 
 export default async function ChampionTrustPage() {
   const data = await getGlobalChampionTrustLeaderboards();
+  const championIds = await getChampionIdsByName(
+    [...data.fraudulentComfortPicks, ...data.coinflipPicks, ...data.mostTrustedPicks, ...data.hiddenPocketPicks].map(
+      (r) => r.championName
+    )
+  );
 
   return (
-    <div className="p-6 md:p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Champion trust leaderboard
+    <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-6 sm:px-6 md:px-10 md:py-8">
+      <header className="flex flex-col gap-1">
+        <h1 className="font-display text-4xl font-bold uppercase leading-none tracking-wide md:text-[44px]">
+          Champion trust
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Data-driven champion confidence across the squad. Stable picks get
-          trusted labels, volatile picks land in coinflip.
+        <p className="text-sm text-muted-foreground">
+          Which picks the squad can actually rely on. Stable picks get trusted, swingy ones land in coinflip.
         </p>
-      </div>
+      </header>
 
-      <Card className="mb-6 border-border/70">
-        <CardContent className="grid gap-3 p-4 text-sm text-muted-foreground sm:grid-cols-3">
-          <div>
-            <p className="font-medium text-foreground">Stable (trusted)</p>
-            <p>8+ games, at least 52% WR, and no major recent WR swing.</p>
-          </div>
-          <div>
-            <p className="font-medium text-foreground">Volatile (coinflip)</p>
-            <p>Meaningful sample with mid WR (48-52%) or sharp recent swings.</p>
-          </div>
-          <div>
-            <p className="font-medium text-foreground">Insufficient</p>
-            <p>Used only for low samples (under 5 games), not high-volume champs.</p>
-          </div>
-        </CardContent>
-      </Card>
+      <Panel aria-label="How labels work" className="grid gap-4 p-5 text-sm sm:grid-cols-3">
+        <div className="flex flex-col gap-1">
+          <Eyebrow className="text-win">Trusted</Eyebrow>
+          <p className="text-muted-foreground">8+ games, at least 52% win rate, no big recent swing.</p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Eyebrow className="text-brand">Coinflip</Eyebrow>
+          <p className="text-muted-foreground">A real sample with a 48–52% win rate, or sharp recent swings.</p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Eyebrow>Too early</Eyebrow>
+          <p className="text-muted-foreground">Fewer than 5 games. Never used for high-volume champions.</p>
+        </div>
+      </Panel>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <CategoryCard
-          title="🚨 FRAUD WATCH 🚨"
-          description="They play it a lot; results don’t back it up."
+      <div className="grid items-start gap-3 lg:grid-cols-2 md:gap-4">
+        <CategoryPanel
+          eyebrow="Fraud watch"
+          eyebrowClass="text-loss"
+          title="Fake comfort picks"
+          description="Played a lot, results don’t back it up."
           rows={data.fraudulentComfortPicks}
-          emptyMessage="No one has qualified yet. Need 5+ games on a top-3 most played champ with &lt;45% WR."
+          emptyMessage="Nobody qualifies yet. Needs 5+ games on a top-3 champion under 45% win rate."
+          championIds={championIds}
         />
-        <CategoryCard
-          title="Volatile picks"
-          description="Could go either way; inconsistent or swingy performance."
+        <CategoryPanel
+          eyebrow="Reliable"
+          eyebrowClass="text-win"
+          title="Most trusted"
+          description="Big sample, reliably good results."
+          rows={data.mostTrustedPicks}
+          emptyMessage="No trusted picks yet. Needs 8+ games with stable positive results."
+          championIds={championIds}
+        />
+        <CategoryPanel
+          eyebrow="Swingy"
+          eyebrowClass="text-brand"
+          title="Coinflips"
+          description="Could go either way; inconsistent results."
           rows={data.coinflipPicks}
           emptyMessage="No coinflip picks yet."
+          championIds={championIds}
         />
-        <CategoryCard
-          title="Most trusted"
-          description="Strong sample size, reliably good performance."
-          rows={data.mostTrustedPicks}
-          emptyMessage="No trusted picks yet. Need 8+ games with stable positive results."
-        />
-        <CategoryCard
-          title="Hidden pocket picks"
-          description="Low volume but surprisingly strong (3–8 games, 60%+ WR)."
+        <CategoryPanel
+          eyebrow="Hidden gems"
+          eyebrowClass="text-[#c9aeff]"
+          title="Pocket picks"
+          description="Low volume but surprisingly strong (3–8 games, 60%+ win rate)."
           rows={data.hiddenPocketPicks}
-          emptyMessage="No pocket picks yet. Need 3–8 games with 60%+ WR."
+          emptyMessage="No pocket picks yet. Needs 3–8 games with 60%+ win rate."
+          championIds={championIds}
         />
       </div>
     </div>

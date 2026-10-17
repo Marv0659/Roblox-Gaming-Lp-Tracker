@@ -1,504 +1,409 @@
 import Link from "next/link";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   type RankedWrappedBundle,
   type PlayerRankedWrapped,
   type GroupAward,
+  type WrappedRankPoint,
 } from "@/lib/ranked-wrapped";
-import {
-  ArrowRight,
-  Flame,
-  Sparkles,
-  TrendingDown,
-  TrendingUp,
-  Trophy,
-  Users,
-} from "lucide-react";
+import { tierColor } from "@/lib/tier-colors";
 import { cn } from "@/lib/utils";
+import { ChampionIcon, Eyebrow, Panel, SectionTitle, StatTile, TierEmblem } from "@/components/lol";
 
-function PlayerLink({
-  id,
-  children,
-}: {
-  id: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={`/players/${id}`}
-      className="font-medium text-sky-400 hover:text-sky-300 hover:underline"
-    >
-      {children}
-    </Link>
-  );
+const TONE_DOT: Record<"good" | "bad" | "neutral", string> = {
+  good: "bg-win-solid",
+  bad: "bg-loss-solid",
+  neutral: "bg-faint",
+};
+
+function signed(n: number): string {
+  return `${n > 0 ? "+" : ""}${n}`;
 }
 
-function AwardTone({ tone }: { tone: "good" | "bad" | "neutral" }) {
-  return (
-    <span
-      className={cn(
-        "inline-block h-2 w-2 rounded-full",
-        tone === "good" && "bg-emerald-500",
-        tone === "bad" && "bg-rose-500",
-        tone === "neutral" && "bg-zinc-500"
-      )}
-    />
-  );
-}
-
-function StatGrid({
-  items,
-}: {
-  items: { label: string; value: string; sub?: string }[];
-}) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((it) => (
-        <div
-          key={it.label}
-          className="rounded-xl border border-border/80 bg-muted/20 px-4 py-3"
-        >
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {it.label}
-          </p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
-            {it.value}
-          </p>
-          {it.sub && (
-            <p className="mt-0.5 text-xs text-muted-foreground">{it.sub}</p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
+function lpTone(n: number): string {
+  return n > 0 ? "text-win" : n < 0 ? "text-loss" : "text-foreground";
 }
 
 export function RankedWrappedShell({
   bundle,
   selectedPlayerId,
+  championIds = {},
 }: {
   bundle: RankedWrappedBundle;
   selectedPlayerId?: string;
+  championIds?: Record<string, number>;
 }) {
   const { group, players } = bundle;
-  const selected =
-    selectedPlayerId &&
-    players.find((p) => p.playerId === selectedPlayerId);
+  const selected = selectedPlayerId ? players.find((p) => p.playerId === selectedPlayerId) : undefined;
+
+  const pill = (active: boolean) =>
+    cn(
+      "flex min-h-10 shrink-0 items-center rounded-[7px] px-4 text-sm whitespace-nowrap transition-colors",
+      active ? "bg-foreground font-semibold text-background" : "font-medium text-muted-foreground hover:text-foreground"
+    );
 
   return (
-    <div className="relative p-4 sm:p-6 md:p-8">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-48 max-w-5xl bg-[radial-gradient(ellipse_at_top,_rgba(251,191,36,0.12),_transparent_55%),radial-gradient(ellipse_at_top,_rgba(168,85,247,0.1),_transparent_50%)] blur-2xl" />
-
-      {/* Nav */}
-      <div className="mb-8 flex flex-col gap-4 border-b border-border/60 pb-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <Sparkles className="h-8 w-8 text-amber-400" aria-hidden />
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Ranked Wrapped
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {group.scope.label} · {group.squadSize} tracked ·{" "}
-              {group.totalRankedGames} ranked games in view
-            </p>
-          </div>
+    <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-6 sm:px-6 md:px-10 md:py-8">
+      <header className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="font-display text-4xl font-bold uppercase leading-none tracking-wide md:text-[44px]">
+            Ranked Wrapped
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {group.scope.label} · {group.squadSize} tracked · {group.totalRankedGames} ranked games
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <nav
+          aria-label="Wrapped for"
+          className="flex max-w-full gap-1 self-start overflow-x-auto rounded-[10px] border border-border bg-card p-1"
+        >
           <Link
             href="/ranked-wrapped"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-              !selectedPlayerId
-                ? "border-amber-500/50 bg-amber-500/10 text-amber-200"
-                : "border-border/80 bg-muted/30 text-muted-foreground hover:bg-muted/50"
-            )}
+            aria-current={!selected ? "page" : undefined}
+            className={pill(!selected)}
           >
-            <Users className="h-3.5 w-3.5" />
             Squad
           </Link>
           {players.map((p) => (
             <Link
               key={p.playerId}
               href={`/ranked-wrapped?player=${encodeURIComponent(p.playerId)}`}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-                selectedPlayerId === p.playerId
-                  ? "border-violet-500/50 bg-violet-500/10 text-violet-200"
-                  : "border-border/80 bg-muted/30 text-muted-foreground hover:bg-muted/50"
-              )}
+              aria-current={selected?.playerId === p.playerId ? "page" : undefined}
+              className={pill(selected?.playerId === p.playerId)}
             >
               {p.gameName}
             </Link>
           ))}
-        </div>
-      </div>
+        </nav>
+      </header>
 
-      {selected ? (
-        <PlayerWrappedBody p={selected} />
-      ) : (
-        <GroupWrappedBody group={group} />
+      {selected ? <PlayerWrappedBody p={selected} championIds={championIds} /> : <GroupWrappedBody group={group} />}
+    </div>
+  );
+}
+
+function Narrative({ eyebrow, headline, lines }: { eyebrow: string; headline: string; lines: string[] }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <Eyebrow className="text-brand">{eyebrow}</Eyebrow>
+      <p className="max-w-3xl font-display text-2xl font-bold leading-tight md:text-3xl">{headline}</p>
+      {lines.length > 0 && (
+        <ul className="flex max-w-3xl flex-col gap-1.5 text-sm text-[#cdd2d9]">
+          {lines.map((line, i) => (
+            <li key={i} className="flex gap-2.5">
+              <span aria-hidden className="mt-[7px] inline-block size-1.5 shrink-0 rotate-45 rounded-[1px] bg-brand" />
+              <span>{line}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
 }
 
-function GroupWrappedBody({
-  group,
-}: {
-  group: RankedWrappedBundle["group"];
-}) {
+function GroupWrappedBody({ group }: { group: RankedWrappedBundle["group"] }) {
   return (
-    <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 via-background to-violet-500/5 p-6 sm:p-8">
-        <div className="absolute right-4 top-4 opacity-20">
-          <Trophy className="h-24 w-24 text-amber-400" />
-        </div>
-        <Badge variant="outline" className="mb-3 border-amber-500/40 text-amber-200">
-          Squad story
-        </Badge>
-        <h2 className="max-w-2xl text-xl font-semibold leading-snug sm:text-2xl">
-          {group.narrative.headline}
-        </h2>
-        <ul className="mt-4 max-w-2xl space-y-2 text-sm text-muted-foreground">
-          {group.narrative.lines.map((line, i) => (
-            <li key={i} className="flex gap-2">
-              <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-amber-500/80" />
-              <span>{line}</span>
-            </li>
-          ))}
-        </ul>
-        {group.avgWinrate != null && (
-          <p className="mt-6 text-sm text-muted-foreground">
-            Blended squad winrate:{" "}
-            <span className="font-semibold text-foreground">
-              {group.avgWinrate.toFixed(1)}%
-            </span>
-          </p>
-        )}
-      </section>
-
-      {group.duoHighlight && (
-        <Card className="border-violet-500/25 bg-violet-500/5">
-          <CardHeader className="pb-2">
-            <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-              Duo highlight
-            </h3>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-semibold text-foreground">
-              {group.duoHighlight.playerA}{" "}
-              <span className="text-muted-foreground">&</span>{" "}
-              {group.duoHighlight.playerB}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {group.duoHighlight.games} games together ·{" "}
-              <span className="font-medium text-emerald-400">
-                {group.duoHighlight.winrate.toFixed(0)}% WR
+    <>
+      <Panel aria-label="Squad story" className="flex flex-col gap-5 p-5 md:p-6">
+        <Narrative eyebrow="Squad story" headline={group.narrative.headline} lines={group.narrative.lines} />
+        <div className="flex flex-wrap gap-3">
+          {group.avgWinrate != null && (
+            <div className="flex flex-col gap-1 rounded-xl bg-surface-2 px-4 py-3">
+              <Eyebrow>Squad win rate</Eyebrow>
+              <span className="font-display text-2xl font-bold leading-none tabular-nums">
+                {group.avgWinrate.toFixed(1)}%
               </span>
-            </p>
-          </CardContent>
-        </Card>
-      )}
+            </div>
+          )}
+          {group.duoHighlight && (
+            <div className="flex min-w-0 flex-col gap-1 rounded-xl bg-surface-2 px-4 py-3">
+              <Eyebrow>Duo of the season</Eyebrow>
+              <span className="font-display text-2xl font-bold leading-none">
+                {group.duoHighlight.playerA} <span className="text-faint">+</span> {group.duoHighlight.playerB}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {group.duoHighlight.games} games ·{" "}
+                <span className="text-win">{group.duoHighlight.winrate.toFixed(0)}%</span>
+              </span>
+            </div>
+          )}
+        </div>
+      </Panel>
 
-      <section>
-        <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-          <Flame className="h-5 w-5 text-orange-400" />
-          Awards
-        </h3>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <section aria-label="Awards" className="flex flex-col gap-3">
+        <SectionTitle>Awards</SectionTitle>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 md:gap-4">
           {group.awards.map((a) => (
             <AwardCard key={a.id} award={a} />
           ))}
         </div>
       </section>
-    </div>
+    </>
   );
 }
 
 function AwardCard({ award }: { award: GroupAward }) {
   return (
-    <Card className="border-border/80 bg-card/80 transition-colors hover:border-border">
-      <CardHeader className="pb-2">
-        <h4 className="font-semibold leading-tight">{award.title}</h4>
-        <p className="text-xs text-muted-foreground">{award.subtitle}</p>
-      </CardHeader>
-      <CardContent>
-        {award.winner ? (
-          <>
-            <PlayerLink id={award.winner.playerId}>
-              {award.winner.gameName}#{award.winner.tagLine}
-            </PlayerLink>
-            {award.stat && (
-              <p className="mt-2 text-sm font-medium tabular-nums text-foreground">
-                {award.stat}
-              </p>
-            )}
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">No data yet</p>
-        )}
-      </CardContent>
-    </Card>
+    <Panel className="flex min-w-0 flex-col gap-2 p-5">
+      <Eyebrow className="text-brand">{award.title}</Eyebrow>
+      {award.winner ? (
+        <Link href={`/players/${award.winner.playerId}`} className="truncate text-[17px] font-semibold hover:underline">
+          {award.winner.gameName} <span className="font-medium text-faint">#{award.winner.tagLine}</span>
+        </Link>
+      ) : (
+        <span className="text-[17px] font-semibold text-muted-foreground">No data yet</span>
+      )}
+      {award.winner && award.stat && (
+        <span className="font-display text-2xl font-bold leading-none tabular-nums">{award.stat}</span>
+      )}
+      <p className="text-xs text-faint">{award.subtitle}</p>
+    </Panel>
   );
 }
 
-function PlayerWrappedBody({ p }: { p: PlayerRankedWrapped }) {
-  const lpTone =
-    p.netLpSolo > 40 ? "text-emerald-400" : p.netLpSolo < -40 ? "text-rose-400" : "text-foreground";
+function RankBox({ label, point }: { label: string; point: WrappedRankPoint | null }) {
+  return (
+    <div className="flex min-w-[180px] flex-1 items-center gap-3 rounded-xl bg-surface-2 p-4">
+      <TierEmblem tier={point?.tier} size={40} />
+      <div className="flex min-w-0 flex-col gap-1">
+        <Eyebrow>{label}</Eyebrow>
+        <span className={cn("font-display text-xl font-bold leading-none", point ? tierColor(point.tier) : "text-muted-foreground")}>
+          {point?.label ?? "Unranked"}
+        </span>
+      </div>
+    </div>
+  );
+}
 
-  const coreStats = [
-    {
-      label: "Ranked games",
-      value: String(p.rankedGamesPlayed),
-      sub: "queues 420 / 440, remakes excluded",
-    },
-    {
-      label: "Net LP (Solo/Duo)",
-      value: `${p.netLpSolo >= 0 ? "+" : ""}${p.netLpSolo}`,
-      sub: `Gross +${p.grossLpGained} / ${p.grossLpLost} from snapshot deltas`,
-    },
-    {
-      label: "Overall winrate",
-      value:
-        p.overallWinrate != null ? `${p.overallWinrate.toFixed(1)}%` : "—",
-    },
-    {
-      label: "Longest win / loss streak",
-      value: `${p.longestWinStreak} / ${p.longestLossStreak}`,
-    },
-    {
-      label: "LP (7d / 30d)",
-      value: `${p.derived.lpGained7d >= 0 ? "+" : ""}${p.derived.lpGained7d} / ${
-        p.derived.lpGained30d >= 0 ? "+" : ""
-      }${p.derived.lpGained30d}`,
-    },
-    {
-      label: "Current streak",
-      value: `${p.derived.currentWinStreak}W · ${p.derived.currentLossStreak}L`,
-      sub: "from most recent games",
-    },
-  ];
+function ChampionRow({
+  label,
+  name,
+  detail,
+  tone,
+  championId,
+}: {
+  label: string;
+  name: string;
+  detail: string;
+  tone?: string;
+  championId?: number;
+}) {
+  return (
+    <div className="flex min-h-10 items-center gap-3">
+      <ChampionIcon championId={championId} championName={name} className="size-9" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className={cn("truncate text-sm font-semibold", tone)}>{name}</span>
+        <span className="text-xs text-faint">{detail}</span>
+      </div>
+      <Eyebrow className="shrink-0">{label}</Eyebrow>
+    </div>
+  );
+}
+
+function PlayerWrappedBody({ p, championIds }: { p: PlayerRankedWrapped; championIds: Record<string, number> }) {
+  const trust = p.championTrust;
+  const hasTrust = trust.trusted || trust.fakeComfort || trust.coinflip;
 
   return (
-    <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-500/10 via-background to-sky-500/5 p-6 sm:p-8">
-        <Badge variant="outline" className="mb-3 border-violet-400/40 text-violet-200">
-          {p.funTitle}
-        </Badge>
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {p.gameName}
-          <span className="text-muted-foreground">#{p.tagLine}</span>
-        </h2>
-        <p className="mt-4 max-w-3xl text-lg leading-relaxed text-foreground/90">
-          {p.narrative.headline}
-        </p>
-        <ul className="mt-4 max-w-3xl space-y-2 text-sm text-muted-foreground">
-          {p.narrative.lines.map((line, i) => (
-            <li key={i}>{line}</li>
-          ))}
-        </ul>
-        <div className="mt-6 flex flex-wrap gap-3">
-          {p.currentRank && (
-            <div className="rounded-lg border border-border/80 bg-background/50 px-4 py-2">
-              <p className="text-xs uppercase text-muted-foreground">Current</p>
-              <p className="font-semibold">{p.currentRank.label}</p>
-            </div>
-          )}
-          {p.highestRank && (
-            <div className="rounded-lg border border-border/80 bg-background/50 px-4 py-2">
-              <p className="text-xs uppercase text-muted-foreground">Peak</p>
-              <p className="font-semibold">{p.highestRank.label}</p>
-            </div>
-          )}
-          <div className={cn("rounded-lg border border-border/80 bg-background/50 px-4 py-2", lpTone)}>
-            <p className="text-xs uppercase text-muted-foreground">Net LP</p>
-            <p className="font-semibold tabular-nums">
-              {p.netLpSolo >= 0 ? "+" : ""}
-              {p.netLpSolo}
-            </p>
+    <>
+      <Panel aria-label="Season story" className="flex flex-col gap-5 p-5 md:p-6">
+        <div className="flex flex-col gap-2">
+          <span className="self-start rounded-full bg-brand/15 px-2.5 py-1 text-xs font-semibold text-brand">
+            {p.funTitle}
+          </span>
+          <h2 className="font-display text-4xl font-bold leading-none break-words md:text-5xl">
+            <Link href={`/players/${p.playerId}`} className="hover:underline">
+              {p.gameName}
+            </Link>{" "}
+            <span className="font-semibold text-faint">#{p.tagLine}</span>
+          </h2>
+        </div>
+        <Narrative eyebrow="The season so far" headline={p.narrative.headline} lines={p.narrative.lines} />
+        <div className="flex flex-wrap gap-3">
+          <RankBox label="Current" point={p.currentRank} />
+          <RankBox label="Peak" point={p.highestRank} />
+          <div className="flex min-w-[140px] flex-1 flex-col justify-center gap-1 rounded-xl bg-surface-2 p-4">
+            <Eyebrow>Net LP · solo</Eyebrow>
+            <span className={cn("font-display text-2xl font-bold leading-none tabular-nums", lpTone(p.netLpSolo))}>
+              {signed(p.netLpSolo)}
+            </span>
           </div>
         </div>
-      </section>
+        {p.peakToCurrentDrop && (
+          <p className="text-sm text-muted-foreground">
+            <span className="text-loss">Down from peak:</span> {p.peakToCurrentDrop.peakLabel} →{" "}
+            {p.peakToCurrentDrop.currentLabel}
+          </p>
+        )}
+      </Panel>
 
-      <section>
-        <h3 className="mb-4 text-lg font-semibold">Season numbers</h3>
-        <StatGrid items={coreStats} />
-      </section>
-
-      {p.peakToCurrentDrop && (
-        <Card className="border-amber-500/20 bg-amber-500/5">
-          <CardContent className="flex flex-wrap items-start gap-3 pt-6">
-            <TrendingDown className="h-5 w-5 text-amber-400" />
-            <div>
-              <p className="font-medium">Peak → now</p>
-              <p className="text-sm text-muted-foreground">
-                {p.peakToCurrentDrop.peakLabel} → {p.peakToCurrentDrop.currentLabel}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <section className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <h3 className="text-base font-semibold">Champions</h3>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            {p.mostPlayedChampion && (
-              <p>
-                <span className="text-muted-foreground">Most played: </span>
-                <span className="font-medium">{p.mostPlayedChampion.name}</span>{" "}
-                ({p.mostPlayedChampion.games} games)
-              </p>
-            )}
-            {p.bestChampion && (
-              <p>
-                <span className="text-muted-foreground">Best WR: </span>
-                <span className="font-medium text-emerald-400">
-                  {p.bestChampion.name}
-                </span>{" "}
-                — {p.bestChampion.winrate.toFixed(0)}% over {p.bestChampion.games}{" "}
-                games
-              </p>
-            )}
-            {p.worstChampion && (
-              <p>
-                <span className="text-muted-foreground">Worst WR: </span>
-                <span className="font-medium text-rose-300">
-                  {p.worstChampion.name}
-                </span>{" "}
-                — {p.worstChampion.winrate.toFixed(0)}% over{" "}
-                {p.worstChampion.games} games
-              </p>
-            )}
-            {p.bestDuoPartner && (
-              <p className="pt-2 border-t border-border/60">
-                <span className="text-muted-foreground">Best duo: </span>
-                <PlayerLink id={p.bestDuoPartner.partnerId}>
-                  {p.bestDuoPartner.gameName}#{p.bestDuoPartner.tagLine}
-                </PlayerLink>{" "}
-                — {p.bestDuoPartner.winrate.toFixed(0)}% (
-                {p.bestDuoPartner.games} games)
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <h3 className="text-base font-semibold">Champion trust</h3>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {p.championTrust.trusted && (
-              <p>
-                <Badge className="mr-2 bg-emerald-600/80">Trusted</Badge>
-                {p.championTrust.trusted.name} (
-                {p.championTrust.trusted.winrate.toFixed(0)}% WR)
-              </p>
-            )}
-            {p.championTrust.fakeComfort && (
-              <p>
-                <Badge className="mr-2 bg-rose-600/80">Fake comfort</Badge>
-                {p.championTrust.fakeComfort.name} (
-                {p.championTrust.fakeComfort.winrate.toFixed(0)}% WR)
-              </p>
-            )}
-            {p.championTrust.coinflip && (
-              <p>
-                <Badge variant="secondary" className="mr-2">
-                  Coinflip
-                </Badge>
-                {p.championTrust.coinflip.name}
-              </p>
-            )}
-            {!p.championTrust.trusted &&
-              !p.championTrust.fakeComfort &&
-              !p.championTrust.coinflip && (
-                <p className="text-muted-foreground">
-                  Not enough games for trust labels yet.
-                </p>
-              )}
-          </CardContent>
-        </Card>
-      </section>
-
-      <section>
-        <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-          <TrendingUp className="h-5 w-5 text-emerald-400" />
-          Momentum
-        </h3>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Card>
-            <CardHeader className="pb-2">
-              <p className="text-xs uppercase text-muted-foreground">
-                Best {p.bestStretch.windowGames}-game slice
-              </p>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-emerald-400">
-                {p.bestStretch.winsInWindow} wins
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <p className="text-xs uppercase text-muted-foreground">
-                Worst {p.worstCollapse.windowGames}-game slice
-              </p>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-rose-400">
-                {p.worstCollapse.winsInWindow} wins
-              </p>
-            </CardContent>
-          </Card>
+      <section aria-label="Season numbers" className="flex flex-col gap-3">
+        <SectionTitle>Season numbers</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+          <StatTile label="Ranked games" value={p.rankedGamesPlayed} sub="Solo + flex, remakes excluded" />
+          <StatTile
+            label="Win rate"
+            value={p.overallWinrate != null ? `${p.overallWinrate.toFixed(1)}%` : "—"}
+            sub={p.longestWinStreak || p.longestLossStreak ? `Best run W${p.longestWinStreak} · worst L${p.longestLossStreak}` : undefined}
+          />
+          <StatTile
+            label="Net LP · solo"
+            value={<span className={lpTone(p.netLpSolo)}>{signed(p.netLpSolo)}</span>}
+            sub={`+${p.grossLpGained} gained / ${p.grossLpLost} lost`}
+          />
+          <StatTile
+            label="LP last 7 days"
+            value={<span className={lpTone(p.derived.lpGained7d)}>{signed(p.derived.lpGained7d)}</span>}
+            sub={`${signed(p.derived.lpGained30d)} over 30 days`}
+          />
+          <StatTile
+            label="Current streak"
+            value={
+              p.derived.currentWinStreak > 0 ? (
+                <span className="text-win">W{p.derived.currentWinStreak}</span>
+              ) : p.derived.currentLossStreak > 0 ? (
+                <span className="text-loss">L{p.derived.currentLossStreak}</span>
+              ) : (
+                "—"
+              )
+            }
+            sub="From the most recent games"
+          />
+          <StatTile
+            label="Best / worst stretch"
+            value={
+              <>
+                <span className="text-win">{p.bestStretch.winsInWindow}</span>
+                <span className="text-faint"> / </span>
+                <span className="text-loss">{p.worstCollapse.winsInWindow}</span>
+              </>
+            }
+            sub={`Wins in a ${p.bestStretch.windowGames}-game window`}
+          />
         </div>
         {p.consistencyStdDev != null && (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Rolling consistency (σ across 5-game windows):{" "}
-            {p.consistencyStdDev.toFixed(3)} — lower = steadier results.
+          <p className="text-xs text-faint">
+            Consistency (σ across 5-game windows): {p.consistencyStdDev.toFixed(3)}. Lower means steadier results.
           </p>
         )}
       </section>
 
-      <section>
-        <h3 className="mb-4 text-lg font-semibold">Highlights</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {p.highlights.map((h) => (
-            <div
-              key={h.id}
-              className="flex gap-3 rounded-xl border border-border/80 bg-muted/15 p-4"
-            >
-              <AwardTone tone={h.tone} />
-              <div>
-                <p className="font-medium">{h.title}</p>
-                <p className="text-sm text-muted-foreground">{h.detail}</p>
-              </div>
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <Panel aria-label="Champions" className="flex flex-col gap-3 p-5">
+          <SectionTitle>Champions</SectionTitle>
+          {!p.mostPlayedChampion && !p.bestChampion && !p.worstChampion ? (
+            <p className="text-sm text-muted-foreground">No champion data yet.</p>
+          ) : (
+            <>
+              {p.mostPlayedChampion && (
+                <ChampionRow
+                  label="Most played"
+                  name={p.mostPlayedChampion.name}
+                  championId={championIds[p.mostPlayedChampion.name]}
+                  detail={`${p.mostPlayedChampion.games} games`}
+                />
+              )}
+              {p.bestChampion && (
+                <ChampionRow
+                  label="Best"
+                  name={p.bestChampion.name}
+                  championId={championIds[p.bestChampion.name]}
+                  detail={`${p.bestChampion.winrate.toFixed(0)}% over ${p.bestChampion.games} games`}
+                  tone="text-win"
+                />
+              )}
+              {p.worstChampion && (
+                <ChampionRow
+                  label="Worst"
+                  name={p.worstChampion.name}
+                  championId={championIds[p.worstChampion.name]}
+                  detail={`${p.worstChampion.winrate.toFixed(0)}% over ${p.worstChampion.games} games`}
+                  tone="text-loss"
+                />
+              )}
+            </>
+          )}
+          {p.bestDuoPartner && (
+            <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2 border-t border-border pt-3 text-sm">
+              <span className="text-muted-foreground">
+                Best duo:{" "}
+                <Link href={`/players/${p.bestDuoPartner.partnerId}`} className="font-semibold text-foreground hover:underline">
+                  {p.bestDuoPartner.gameName}
+                </Link>
+              </span>
+              <span className="text-xs text-faint">
+                <span className="text-win">{p.bestDuoPartner.winrate.toFixed(0)}%</span> over {p.bestDuoPartner.games} games
+              </span>
             </div>
-          ))}
-        </div>
-      </section>
+          )}
+        </Panel>
+
+        <Panel aria-label="Champion trust" className="flex flex-col gap-3 p-5">
+          <SectionTitle>Champion trust</SectionTitle>
+          {!hasTrust ? (
+            <p className="text-sm text-muted-foreground">Not enough games for trust labels yet.</p>
+          ) : (
+            [
+              { key: "Trusted", c: trust.trusted, className: "bg-win-soft text-win" },
+              { key: "Fake comfort", c: trust.fakeComfort, className: "bg-loss-soft text-loss" },
+              { key: "Coinflip", c: trust.coinflip, className: "bg-brand/15 text-brand" },
+            ]
+              .filter((t) => t.c)
+              .map((t) => (
+                <div key={t.key} className="flex min-h-10 items-center gap-3">
+                  <ChampionIcon championId={championIds[t.c!.name]} championName={t.c!.name} className="size-9" />
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm font-semibold">{t.c!.name}</span>
+                    <span className="text-xs text-faint">
+                      {t.c!.games} games · {t.c!.winrate.toFixed(0)}%
+                    </span>
+                  </div>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide",
+                      t.className
+                    )}
+                  >
+                    {t.key}
+                  </span>
+                </div>
+              ))
+          )}
+        </Panel>
+      </div>
+
+      {p.highlights.length > 0 && (
+        <section aria-label="Highlights" className="flex flex-col gap-3">
+          <SectionTitle>Highlights</SectionTitle>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {p.highlights.map((h) => (
+              <Panel key={h.id} className="flex gap-3 p-4">
+                <span aria-hidden className={cn("mt-1.5 inline-block size-2 shrink-0 rotate-45 rounded-[2px]", TONE_DOT[h.tone])} />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="font-semibold">{h.title}</span>
+                  <span className="text-sm text-muted-foreground">{h.detail}</span>
+                </div>
+              </Panel>
+            ))}
+          </div>
+        </section>
+      )}
 
       {p.topMoments.length > 0 && (
-        <section>
-          <h3 className="mb-4 text-lg font-semibold">Top moments</h3>
-          <ul className="space-y-2">
+        <Panel aria-label="Top moments" className="flex flex-col gap-3 p-5">
+          <SectionTitle>Top moments</SectionTitle>
+          <ul className="flex flex-col">
             {p.topMoments.map((m) => (
               <li
                 key={m.id}
-                className="flex gap-3 rounded-lg border border-border/60 bg-muted/10 px-4 py-3"
+                className="flex flex-col gap-0.5 border-b border-[#1e2228] py-2.5 last:border-b-0 sm:flex-row sm:items-baseline sm:gap-4"
               >
-                <span className="font-medium text-amber-400">{m.label}</span>
-                <span className="text-sm text-muted-foreground">
-                  {m.description}
-                </span>
+                <span className="shrink-0 font-display text-lg font-bold text-brand sm:w-48">{m.label}</span>
+                <span className="text-sm text-muted-foreground">{m.description}</span>
               </li>
             ))}
           </ul>
-        </section>
+        </Panel>
       )}
-    </div>
+    </>
   );
 }

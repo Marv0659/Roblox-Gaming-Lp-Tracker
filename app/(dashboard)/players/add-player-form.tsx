@@ -34,6 +34,9 @@ const REGIONS = [
   "vn2",
 ];
 
+const LABEL = "text-[11px] font-semibold uppercase tracking-[0.12em] text-faint";
+const FIELD = "h-11 w-full min-w-0 bg-surface-2 dark:bg-surface-2";
+
 export function AddPlayerForm() {
   const [gameName, setGameName] = useState("");
   const [tagLine, setTagLine] = useState("");
@@ -66,47 +69,76 @@ export function AddPlayerForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
-      <div className="grid gap-1.5 min-w-0 flex-1 sm:flex-initial">
-        <Label htmlFor="gameName" title="The in-game name (first part of Riot ID). You can paste full Riot ID (name#tag) here to fill both fields.">Game name</Label>
+    <form
+      onSubmit={handleSubmit}
+      className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px_120px_auto] sm:items-end"
+    >
+      <div className="grid min-w-0 gap-1.5">
+        <Label
+          htmlFor="gameName"
+          className={LABEL}
+          title="The in-game name (first part of Riot ID). You can paste full Riot ID (name#tag) here to fill both fields."
+        >
+          Game name
+        </Label>
         <Input
           id="gameName"
           value={gameName}
           onChange={(e) => setGameName(e.target.value)}
           onPaste={handlePasteRiotId}
           placeholder="Summoner or Summoner#Tag"
+          autoComplete="off"
           required
-          className="h-9 w-full min-w-0 sm:w-36"
+          className={FIELD}
         />
       </div>
-      <div className="grid gap-1.5 w-full sm:w-auto sm:min-w-0">
-        <Label htmlFor="tagLine" title="The tag after # in Riot ID (e.g. NA1, EUW). Paste name#tag in either field to fill both.">Tag line</Label>
-        <Input
-          id="tagLine"
-          value={tagLine}
-          onChange={(e) => setTagLine(e.target.value)}
-          onPaste={handlePasteRiotId}
-          placeholder="NA1"
-          required
-          className="h-9 w-full sm:w-24"
-        />
+      <div className="grid grid-cols-2 gap-3 sm:contents">
+        <div className="grid min-w-0 gap-1.5">
+          <Label
+            htmlFor="tagLine"
+            className={LABEL}
+            title="The tag after # in Riot ID (e.g. NA1, EUW). Paste name#tag in either field to fill both."
+          >
+            Tag line
+          </Label>
+          <Input
+            id="tagLine"
+            value={tagLine}
+            onChange={(e) => setTagLine(e.target.value)}
+            onPaste={handlePasteRiotId}
+            placeholder="EUW"
+            autoComplete="off"
+            required
+            className={FIELD}
+          />
+        </div>
+        <div className="grid min-w-0 gap-1.5">
+          <Label
+            htmlFor="region"
+            className={LABEL}
+            title="Server/region where the account plays (e.g. euw1 = Europe West, na1 = North America)."
+          >
+            Region
+          </Label>
+          <Select value={region} onValueChange={setRegion}>
+            <SelectTrigger id="region" className={`${FIELD} uppercase data-[size=default]:h-11`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {REGIONS.map((r) => (
+                <SelectItem key={r} value={r} className="uppercase">
+                  {r}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-      <div className="grid gap-1.5 min-w-0">
-        <Label title="Server/region where the account plays (e.g. euw1 = Europe West, na1 = North America).">Region</Label>
-        <Select value={region} onValueChange={setRegion}>
-          <SelectTrigger className="h-9 w-full min-w-[6rem] sm:w-24">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {REGIONS.map((r) => (
-              <SelectItem key={r} value={r}>
-                {r}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <Button type="submit" disabled={pending} className="h-9">
+      <Button
+        type="submit"
+        disabled={pending}
+        className="h-11 bg-brand px-5 font-semibold text-[#15181d] hover:bg-brand/90"
+      >
         {pending ? "Adding…" : "Add player"}
       </Button>
     </form>

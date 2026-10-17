@@ -1,0 +1,22 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "npm.cmd",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "running-dev",
+      "url": "http://localhost:3000",
+      "port": 3000
+    },
+    {
+      "name": "prod-preview",
+      "runtimeExecutable": "npx.cmd",
+      "runtimeArgs": ["next", "start", "-p", "3100"],
+      "port": 3100
+    }
+  ]
+}
