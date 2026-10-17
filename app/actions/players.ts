@@ -43,6 +43,37 @@ export async function addTrackedPlayer(
   }
 }
 
+/** Minimum gap between manual syncs of the same player (protects the Riot rate limit). */
+const MANUAL_SYNC_COOLDOWN_MS = 2 * 60 * 1000;
+
+type SyncTrigger = "CRON_ALL" | "CRON_STEP" | "MANUAL_ALL" | "MANUAL_PLAYER";
+
+/**
+ * Writes a SyncLog row around a sync run. Logging failures (e.g. table not migrated yet)
+ * never fail the sync itself.
+ */
+async function logSyncRun(
+  trigger: SyncTrigger,
+  result: { ok: boolean; playersSynced: number; matchesAdded: number; error?: string },
+  startedAt: Date
+): Promise<void> {
+  try {
+    await prisma.syncLog.create({
+      data: {
+        trigger,
+        startedAt,
+        finishedAt: new Date(),
+        ok: result.ok,
+        playersSynced: result.playersSynced,
+        matchesAdded: result.matchesAdded,
+        error: result.error?.slice(0, 2000),
+      },
+    });
+  } catch (e) {
+    console.error("Failed to write SyncLog", e);
+  }
+}
+
 export type SyncPlayerResult =
   | { ok: true; matchesAdded: number; skippedDueToLock?: boolean }
   | { ok: false; error: string };
@@ -165,18 +196,36 @@ async function syncOneTrackedPlayer(
 export async function syncTrackedPlayer(
   trackedPlayerId: string
 ): Promise<SyncPlayerResult> {
-  const outcome = await syncOneTrackedPlayer(trackedPlayerId);
-  if (outcome.status === "failed") {
-    return { ok: false, error: outcome.error };
-  }
-
+  const startedAt = new Date();
   try {
+    const player = await prisma.trackedPlayer.findUnique({
+      where: { id: trackedPlayerId },
+      select: { lastSyncedAt: true },
+    });
+    if (!player) return { ok: false, error: "Player not found." };
+    if (player.lastSyncedAt) {
+      const waitMs = player.lastSyncedAt.getTime() + MANUAL_SYNC_COOLDOWN_MS - Date.now();
+      if (waitMs > 0) {
+        return {
+          ok: false,
+          error: `Synced recently — try again in ${Math.ceil(waitMs / 1000)}s.`,
+        };
+      }
+    }
+
+    const outcome = await syncOneTrackedPlayer(trackedPlayerId);
+    if (outcome.status === "failed") {
+      await logSyncRun("MANUAL_PLAYER", { ok: false, playersSynced: 0, matchesAdded: 0, error: outcome.error }, startedAt);
+      return { ok: false, error: outcome.error };
+    }
+
     revalidatePath("/dashboard");
     revalidatePath("/players");
     revalidatePath(`/players/${trackedPlayerId}`);
     if (outcome.status === "skipped-locked") {
       return { ok: true, matchesAdded: 0, skippedDueToLock: true };
     }
+    await logSyncRun("MANUAL_PLAYER", { ok: true, playersSynced: 1, matchesAdded: outcome.matchesAdded }, startedAt);
     return { ok: true, matchesAdded: outcome.matchesAdded };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Sync failed.";
@@ -222,7 +271,27 @@ const syncAllOptions: SyncPlayerOptions = {
  * player per run (cursor in DB), or Inngest/Trigger.dev with delays. The Riot client already
  * retries 429s; incremental match sync reduces call volume on every run after the first.
  */
-export async function syncAllPlayers(): Promise<SyncAllResult> {
+export async function syncAllPlayers(
+  trigger: "CRON_ALL" | "MANUAL_ALL" = "MANUAL_ALL"
+): Promise<SyncAllResult> {
+  const startedAt = new Date();
+  const result = await runSyncAll();
+  await logSyncRun(
+    trigger,
+    {
+      ok: result.ok,
+      playersSynced: result.playersSynced ?? 0,
+      matchesAdded: result.totalMatchesAdded ?? 0,
+      error: result.ok
+        ? undefined
+        : [result.error, ...(result.errors ?? [])].join("\n"),
+    },
+    startedAt
+  );
+  return result;
+}
+
+async function runSyncAll(): Promise<SyncAllResult> {
   try {
     const players = await prisma.trackedPlayer.findMany({
       select: { id: true },
@@ -324,6 +393,19 @@ export type SyncNextPlayerResult =
  * Persists cursor in `CronSyncState` so each cron tick advances through the roster.
  */
 export async function syncNextPlayerForCron(): Promise<SyncNextPlayerResult> {
+  const startedAt = new Date();
+  const result = await runSyncNextPlayer();
+  await logSyncRun(
+    "CRON_STEP",
+    result.ok
+      ? { ok: true, playersSynced: result.total > 0 ? 1 : 0, matchesAdded: result.matchesAdded }
+      : { ok: false, playersSynced: 0, matchesAdded: 0, error: result.error },
+    startedAt
+  );
+  return result;
+}
+
+async function runSyncNextPlayer(): Promise<SyncNextPlayerResult> {
   try {
     const players = await prisma.trackedPlayer.findMany({
       select: { id: true, gameName: true },

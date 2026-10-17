@@ -135,7 +135,7 @@ export function RecentMatchesTabs({ matches }: { matches: RecentMatch[] }) {
                       title={
                         isCalculated
                           ? "From rank snapshots."
-                          : "Estimated (no snapshots bracketing this match)."
+                          : "Estimated — no snapshot pair isolates this game (synced after several games)."
                       }
                     >
                       <span

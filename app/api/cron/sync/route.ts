@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const result = await syncAllPlayers();
+  const result = await syncAllPlayers("CRON_ALL");
 
   if (result.ok) {
     return NextResponse.json({

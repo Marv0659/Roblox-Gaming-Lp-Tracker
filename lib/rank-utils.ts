@@ -44,13 +44,15 @@ export function rankToLadderLp(r: RankLike): number {
   const tier = (r.tier ?? "").toUpperCase();
   const rank = (r.rank ?? "").toUpperCase();
   const tierIndex = TIER_ORDER[tier] ?? -1;
-  const lp = Math.max(0, Math.min(100, r.leaguePoints ?? 0));
+  const rawLp = Math.max(0, r.leaguePoints ?? 0);
 
-  if (tierIndex < 0) return lp;
+  if (tierIndex < 0) return rawLp;
+  // Master, Grandmaster and Challenger share one uncapped LP ladder (GM/Chall are LP cutoffs).
+  if (tierIndex >= TIER_ORDER.MASTER) return TIER_ORDER.MASTER * LP_PER_TIER + rawLp;
 
+  const lp = Math.min(100, rawLp);
   const divisionIndex = rank in RANK_ORDER ? RANK_ORDER[rank]! : 0;
-  // Master+ has no visible division; treat as top division within tier.
-  const normalizedDivision = tierIndex >= TIER_ORDER.MASTER ? DIVISIONS_PER_TIER : Math.max(0, Math.min(3, divisionIndex));
+  const normalizedDivision = Math.max(0, Math.min(3, divisionIndex));
 
   return tierIndex * LP_PER_TIER + normalizedDivision * LP_PER_DIVISION + lp;
 }
@@ -92,4 +94,9 @@ export function isDemotion(from: RankLike, to: RankLike): boolean {
 /** True if rank (tier+division) is unchanged; LP may differ. */
 export function isSameRank(from: RankLike, to: RankLike): boolean {
   return from.tier === to.tier && from.rank === to.rank;
+}
+
+/** LP change between two ranks on the continuous ladder (promotions/demotions included). */
+export function lpDiff(from: RankLike, to: RankLike): number {
+  return rankToLadderLp(to) - rankToLadderLp(from);
 }

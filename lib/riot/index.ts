@@ -13,6 +13,7 @@ import { getSummonerByPuuid } from "./summoner";
 import { getRoutingRegion, isValidPlatform } from "./regions";
 import { snapshotMeaningfullyChanged } from "@/lib/lp-history";
 import { persistRankEventsForNewSnapshot } from "@/lib/rank-events";
+import { storedMatchIsComplete } from "./sync-helpers";
 import type {
   RiotAccountDto,
   SummonerDto,
@@ -161,12 +162,13 @@ export async function syncRankedForPlayer(trackedPlayerId: string): Promise<void
 /**
  * Sync recent ranked matches for a tracked player. Fetches match IDs, then each match,
  * and upserts Match + MatchParticipant for every tracked player in that match.
- * Skips if match already in DB.
+ * Match details are only downloaded when the DB is missing something for that match.
  */
 export type SyncMatchesOptions = {
   /**
-   * Size of the unfiltered "recent match ids" list (fallback).
-   * Default: max(count * 2, 50) — high call volume. For bulk sync, pass a smaller cap (e.g. 24–36).
+   * Size of the unfiltered "recent match ids" list, only requested when both
+   * queue-filtered lists come back empty (guards against flaky queue filters).
+   * Default: max(count * 2, 50). For bulk sync, pass a smaller cap (e.g. 24–36).
    */
   fallbackMatchListSize?: number;
   /**
@@ -193,6 +195,26 @@ async function getIncrementalStartTimeSeconds(
   return Math.floor(row.match.gameStartAt.getTime() / 1000) - OVERLAP_SEC;
 }
 
+function participantData(trackedPlayerId: string, p: ParticipantDto) {
+  return {
+    trackedPlayerId,
+    championId: p.championId,
+    championName: p.championName ?? undefined,
+    kills: p.kills,
+    deaths: p.deaths,
+    assists: p.assists,
+    win: p.win,
+    teamPosition: p.teamPosition || undefined,
+    lane: p.individualPosition || undefined,
+    teamId: p.teamId,
+    earlySurrender: p.gameEndedInEarlySurrender ?? false,
+    cs: p.totalMinionsKilled + (p.neutralMinionsKilled ?? 0),
+    gold: p.goldEarned,
+    damageDealt: p.totalDamageDealtToChampions,
+    visionScore: p.visionScore,
+  };
+}
+
 export async function syncMatchesForPlayer(
   trackedPlayerId: string,
   count: number = 20,
@@ -215,8 +237,6 @@ export async function syncMatchesForPlayer(
   });
 
   // Fetch both ranked queues (420 solo/duo + 440 flex), then dedupe.
-  // Also fetch a generic recent list as a fallback in case queue-filtered
-  // match ID endpoints are inconsistent for some accounts/regions.
   // Sequential (not Promise.all) to avoid bursting the rate limit when syncing many players.
   const ids420 = await getMatchIdsByPuuid(
     player.routingRegion,
@@ -228,23 +248,52 @@ export async function syncMatchesForPlayer(
     player.puuid,
     listOpts({ count, queue: RANKED_QUEUE_IDS[1] })
   );
-  const fallbackRecentIds = await getMatchIdsByPuuid(
-    player.routingRegion,
-    player.puuid,
-    listOpts({ count: fallbackListSize })
-  );
+  // Queue-filtered lists have occasionally come back empty for some accounts/regions;
+  // only then fall back to the unfiltered list (most of it is non-ranked and gets discarded).
+  const fallbackRecentIds =
+    ids420.length === 0 && ids440.length === 0
+      ? await getMatchIdsByPuuid(
+          player.routingRegion,
+          player.puuid,
+          listOpts({ count: fallbackListSize })
+        )
+      : [];
   const matchIds = [...new Set([...ids420, ...ids440, ...fallbackRecentIds])];
+  if (matchIds.length === 0) return { matchesAdded: 0 };
 
   const allTracked = await prisma.trackedPlayer.findMany({
     select: { id: true, puuid: true },
   });
   const puuidToId = new Map(allTracked.map((p) => [p.puuid, p.id]));
 
+  const storedMatches = await prisma.match.findMany({
+    where: { riotMatchId: { in: matchIds } },
+    select: {
+      id: true,
+      riotMatchId: true,
+      participantPuuids: true,
+      participants: { select: { trackedPlayerId: true } },
+    },
+  });
+  const storedByRiotId = new Map(storedMatches.map((m) => [m.riotMatchId, m]));
+
   let matchesAdded = 0;
   for (const matchId of matchIds) {
-    const existing = await prisma.match.findUnique({
-      where: { riotMatchId: matchId },
-    });
+    const existing = storedByRiotId.get(matchId);
+    if (
+      existing &&
+      storedMatchIsComplete(
+        {
+          participantPuuids: existing.participantPuuids,
+          participantIds: existing.participants.map((p) => p.trackedPlayerId),
+        },
+        trackedPlayerId,
+        puuidToId
+      )
+    ) {
+      continue;
+    }
+
     const matchDto = await getMatchById(player.routingRegion, matchId);
     // Keep only ranked solo/flex games in DB for this sync path.
     if (!RANKED_QUEUE_IDS.includes(matchDto.info.queueId as (typeof RANKED_QUEUE_IDS)[number])) {
@@ -259,6 +308,11 @@ export async function syncMatchesForPlayer(
       );
     if (trackedParticipants.length === 0) continue;
 
+    const matchFields = {
+      gameVersion: matchDto.info.gameVersion,
+      participantPuuids: matchDto.info.participants.map((p) => p.puuid),
+    };
+
     if (!existing) {
       await prisma.match.create({
         data: {
@@ -266,22 +320,11 @@ export async function syncMatchesForPlayer(
           gameStartAt: new Date(matchDto.info.gameStartTimestamp),
           queueId: matchDto.info.queueId,
           gameDuration: matchDto.info.gameDuration,
+          ...matchFields,
           participants: {
-            create: trackedParticipants.map(({ trackedPlayerId, p }) => ({
-              trackedPlayerId,
-              championId: p.championId,
-              championName: p.championName ?? undefined,
-              kills: p.kills,
-              deaths: p.deaths,
-              assists: p.assists,
-              win: p.win,
-              teamPosition: p.teamPosition || undefined,
-              lane: p.individualPosition || undefined,
-              cs: p.totalMinionsKilled + (p.neutralMinionsKilled ?? 0),
-              gold: p.goldEarned,
-              damageDealt: p.totalDamageDealtToChampions,
-              visionScore: p.visionScore,
-            })),
+            create: trackedParticipants.map(({ trackedPlayerId, p }) =>
+              participantData(trackedPlayerId, p)
+            ),
           },
         },
       });
@@ -289,37 +332,25 @@ export async function syncMatchesForPlayer(
       continue;
     }
 
-    // Match already exists: backfill any missing tracked participants.
-    const existingParticipants = await prisma.matchParticipant.findMany({
-      where: { matchId: existing.id },
-      select: { trackedPlayerId: true },
-    });
-    const existingIds = new Set(existingParticipants.map((p) => p.trackedPlayerId));
+    // Match already exists: backfill missing tracked participants and the newer match fields.
+    const existingIds = new Set(existing.participants.map((p) => p.trackedPlayerId));
     const missing = trackedParticipants.filter(
       ({ trackedPlayerId }) => !existingIds.has(trackedPlayerId)
     );
-    if (missing.length === 0) continue;
 
     await prisma.match.update({
       where: { id: existing.id },
       data: {
-        participants: {
-          create: missing.map(({ trackedPlayerId, p }) => ({
-            trackedPlayerId,
-            championId: p.championId,
-            championName: p.championName ?? undefined,
-            kills: p.kills,
-            deaths: p.deaths,
-            assists: p.assists,
-            win: p.win,
-            teamPosition: p.teamPosition || undefined,
-            lane: p.individualPosition || undefined,
-            cs: p.totalMinionsKilled + (p.neutralMinionsKilled ?? 0),
-            gold: p.goldEarned,
-            damageDealt: p.totalDamageDealtToChampions,
-            visionScore: p.visionScore,
-          })),
-        },
+        ...matchFields,
+        ...(missing.length > 0
+          ? {
+              participants: {
+                create: missing.map(({ trackedPlayerId, p }) =>
+                  participantData(trackedPlayerId, p)
+                ),
+              },
+            }
+          : {}),
       },
     });
   }
@@ -350,6 +381,10 @@ export async function syncPlayer(
       ? { fallbackMatchListSize: opts.fallbackMatchListSize }
       : {}),
     ...(opts?.incremental != null ? { incremental: opts.incremental } : {}),
+  });
+  await prisma.trackedPlayer.update({
+    where: { id: trackedPlayerId },
+    data: { lastSyncedAt: new Date() },
   });
   return { rankedSynced: true, matchesAdded };
 }

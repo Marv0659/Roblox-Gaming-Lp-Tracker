@@ -239,6 +239,7 @@ import type { DerivedPlayerStats } from "@/lib/derived-stats";
 import { computeDerivedPlayerStats } from "@/lib/derived-stats";
 import {
   buildLpHistory,
+  lpChangeForMatch,
   deriveSnapshotDeltas,
   associateMatchesWithDeltas,
   getLpGainedLast7d,
@@ -248,7 +249,6 @@ import {
   type LpHistoryEntry,
 } from "@/lib/lp-history";
 import { computeChampionTrust, type ChampionTrustResult } from "@/lib/champion-trust";
-import { rankToLadderLp } from "@/lib/rank-utils";
 
 /** Player fun/social stats; computed by derived-stats layer from existing DB data. */
 export type PlayerFunStats = DerivedPlayerStats;
@@ -408,9 +408,6 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
   });
   if (!player) return null;
 
-  const soloSnapshots = player.rankSnapshots
-    .filter((s) => s.queueType === SOLO_QUEUE)
-    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const soloSnap = player.rankSnapshots.find((s) => s.queueType === SOLO_QUEUE);
   const flexSnap = player.rankSnapshots.find((s) => s.queueType === FLEX_QUEUE);
 
@@ -454,24 +451,6 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
 
   const soloCurrentRank = toCurrentRank(soloSnap);
   const flexCurrentRank = toCurrentRank(flexSnap);
-
-  function lpChangeForMatch(gameStartAt: Date): number | null {
-    const t = gameStartAt.getTime();
-    const before = [...soloSnapshots].filter((s) => s.createdAt.getTime() < t).pop();
-    const after = soloSnapshots.find((s) => s.createdAt.getTime() > t);
-    if (!before || !after) return null;
-    return (
-      rankToLadderLp({
-        tier: after.tier,
-        rank: after.rank,
-        leaguePoints: after.leaguePoints,
-      }) - rankToLadderLp({
-        tier: before.tier,
-        rank: before.rank,
-        leaguePoints: before.leaguePoints,
-      })
-    );
-  }
 
   const funStats = computeDerivedPlayerStats(
     {
@@ -550,7 +529,7 @@ export async function getPlayerDetail(trackedPlayerId: string): Promise<PlayerDe
       visionScore: mp.visionScore,
       gameStartAt: mp.match.gameStartAt,
       gameDuration: mp.match.gameDuration,
-      lpChange: lpChangeForMatch(mp.match.gameStartAt),
+      lpChange: lpChangeForMatch(mp.match, player.rankSnapshots),
     })),
     lpHistory,
     championTrust,
